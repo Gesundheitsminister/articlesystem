@@ -2,6 +2,15 @@ Changelog
 ================================================================================================
 
 
+Articlesystem main module v1.7.1
+------------------------------------------------------------------------------------------------
+Internal versionnumber: 01.07.01<br/>
+Release: 14.11.2013
+
+* NOTE: No changes on module, just updated modules version number
+
+
+
 Articlesystem main module v1.6.10
 ------------------------------------------------------------------------------------------------
 Internal versionnumber: 01.06.10<br/>
