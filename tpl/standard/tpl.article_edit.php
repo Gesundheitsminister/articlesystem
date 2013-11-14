@@ -256,10 +256,10 @@ $_AS['tpl']['article_start'] = '
 							<script type="text/javascript" charset="utf-8">
 							/* <![CDATA[ */
 								$(function() {
-									$("#as_article_date_start").datePicker({startDate:\'01/01/1980\',clickInput:false,createButton:false,displayClose:false,closeOnSelect:true})
-									$("#as_article_date_start").click( function(){ $("#as_article_date_start").dpDisplay(); });
-									
-									$("#as_article_date_start").bind(
+									$("#as_article_date_start")
+										.datePicker({startDate:\'01/01/1980\',clickInput:false,createButton:false,displayClose:false,closeOnSelect:true})
+										.click( function(){ $(this).dpDisplay(); })
+										.bind(
 										"dpClosed",
 										function(e, selectedDates)
 										{
@@ -321,10 +321,10 @@ $_AS['tpl']['article_end'] = '
 								}
 
 								$(function() {
-									$("#as_article_date_end").datePicker({startDate:\'01/01/1980\',clickInput:false,createButton:false,displayClose:false,closeOnSelect:true})
-									$("#as_article_date_end").click( function(){ $("#as_article_date_end").dpDisplay(); });
-									
-									$("#as_article_date_end").bind(
+									$("#as_article_date_end")
+									.datePicker({startDate:\'01/01/1980\',clickInput:false,createButton:false,displayClose:false,closeOnSelect:true})
+									.click( function(){ $(this).dpDisplay(); })
+									.bind(
 										"dpClosed",
 										function(e, selectedDates)
 										{
@@ -805,10 +805,10 @@ $_AS['tpl']['datesub'] = '
 			<script type="text/javascript" charset="utf-8">
 			/* <![CDATA[ */
 				$(function() {
-					$("#as_dp_button{idelement}").datePicker({startDate:\'01/01/1980\',clickInput:false,createButton:false,displayClose:false,closeOnSelect:true})
-					$("#as_dp_button{idelement}").click( function(){ $("#as_dp_button{idelement}").dpDisplay(); });
-							
-							$("#as_dp_button{idelement}").bind(
+					$("#as_dp_button{idelement}")
+					.datePicker({startDate:\'01/01/1980\',clickInput:false,createButton:false,displayClose:false,closeOnSelect:true})
+					.click( function(){ $(this).dpDisplay(); })
+					.bind(
 								"dpClosed",
 								function(e, selectedDates)
 								{
@@ -882,9 +882,8 @@ for ($i=1;$i<36;$i++)
 					/* <![CDATA[ */
 						$(function() {
 							$("#as_dp_button_custom'.$i.'").datePicker({startDate:\'01/01/1980\',clickInput:false,createButton:false,displayClose:false,closeOnSelect:true})
-							$("#as_dp_button_custom'.$i.'").click( function(){ $("#as_dp_button_custom'.$i.'").dpDisplay(); });
-									
-									$("#as_dp_button_custom'.$i.'").bind(
+							.click( function(){ $(this).dpDisplay(); })
+							.bind(
 										"dpClosed",
 										function(e, selectedDates)
 										{
@@ -921,10 +920,10 @@ for ($i=1;$i<36;$i++)
 					<script type="text/javascript" charset="utf-8">
 					/* <![CDATA[ */
 						$(function() {
-							$("#as_dp_button_custom'.$i.'").datePicker({startDate:\'01/01/1980\',clickInput:false,createButton:false,displayClose:false,closeOnSelect:true})
-							$("#as_dp_button_custom'.$i.'").click( function(){ $("#as_dp_button_custom'.$i.'").dpDisplay(); });
-									
-									$("#as_dp_button_custom'.$i.'").bind(
+							$("#as_dp_button_custom'.$i.'")
+							.datePicker({startDate:\'01/01/1980\',clickInput:false,createButton:false,displayClose:false,closeOnSelect:true})
+							.click( function(){ $(this).dpDisplay(); })
+							.bind(
 										"dpClosed",
 										function(e, selectedDates)
 										{
