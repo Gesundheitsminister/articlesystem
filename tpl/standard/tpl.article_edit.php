@@ -6,7 +6,7 @@ if(! defined('CMS_CONFIGFILE_INCLUDED')){
 $_AS['tpl']['back'] = '
 <table style="margin-bottom:5px;margin-top:5px;display:none;">
 	<tr>
-    <td class="entry nowrap"><input type="button" value="{back_label}" class="sf_buttonAction tmbtnnew" onclick="document.location.href=\'{back_url}\';" onmouseover="this.className=\'sf_buttonActionOver\'" onmouseout="this.className=\'sf_buttonAction\'"  style="width:auto;margin:0;float:right;"></td>
+    <td class="entry nowrap"><input type="button" value="{back_label}" class="sf_buttonAction tmbtnnew" onclick="document.location.href=\'{back_url}\';" style="width:auto;margin:0;float:right;"></td>
     </tr>
   </table>
 ';
@@ -98,26 +98,26 @@ $_AS['tpl']['tinyscripts'] = '
 	<script type="text/javascript"> 
   	<!--   
 
-  	var SFrbTypeCall="";           
-	 	function SFrb() {
+  	var ASrbTypeCall="";           
+	 	function ASrb() {
 			// Internal fields
 			this.settings = new Array();
 			this.intinyMCE = false;
 			this.callerWindow = null;
 		};
-		SFrb.prototype.SFrbCallBack = function(field_name, url, type, win) {
+		ASrb.prototype.ASrbCallBack = function(field_name, url, type, win) {
 			// Save away
 			this.field = field_name;
 			this.callerWindow = win;
 			this.intinyMCE = true;
-			SFrbTypeCall=type;
+			ASrbTypeCall=type;
 			if (type=="file" || type=="media")
 				new_window("{sf_rb_file_url}", "rb", "", screen.width * 0.6, screen.height * 0.6, "true")
 			else
 				new_window("{sf_rb_image_url}", "rb", "", screen.width * 0.6, screen.height * 0.6, "true")
 		}; 
 		// Global instance
-		var SF = new SFrb();   	
+		var AS = new ASrb();   	
 
 		var tiny_active=1;	
 
@@ -135,7 +135,7 @@ $_AS['tpl']['tinyscripts'] = '
 			theme_advanced_buttons1 :"search,replace,separator,undo,redo,separator,cut,copy,pastetext,pasteword,separator,bold,italic,underline,strikethrough,sub,sup,separator,justifyleft,justifycenter,justifyright,justifyfull,separator,bullist,numlist,liststyle,indent,outdent,separator,charmap,separator,image,separator,anchor,link,unlink,separator,removeformat,cleanup,separator,code",
 			theme_advanced_buttons2 :"",
 			theme_advanced_buttons3 :"",
-			file_browser_callback : "SF.SFrbCallBack",
+			file_browser_callback : "AS.ASrbCallBack",
 			theme_advanced_toolbar_location : "top",
 			theme_advanced_toolbar_align : "left",
 			theme_advanced_statusbar_location : "bottom",
@@ -165,20 +165,20 @@ $_AS['tpl']['tinyscripts'] = '
 			if (value.indexOf("idfile")!=-1)
 				value="'.str_replace($cfg_client["htmlpath"],'',$cfg_client["upl_htmlpath"]).'"+name;
 
-			if (SF.field=="href") {		
-				SF.callerWindow.document.forms[0].title.value=filename;	
-				SF.callerWindow.document.forms[0].href.value=value;	
-			} else if (SF.field=="popupurl") {
-				SF.callerWindow.document.forms[0].popupurl.value=value;
-				SF.callerWindow.document.forms[0].popupname.value=filenamewithoutext;
-				SF.callerWindow.buildOnClick();
-			} else if (SF.field=="longdesc") {
-				SF.callerWindow.document.forms[0].longdesc.value=value;
-			} else if (SF.field=="src") {
-				SF.callerWindow.document.forms[0].src.value=value;
-				if (SF.callerWindow.generatePreview){
-					SF.callerWindow.switchType(SF.callerWindow.document.forms[0].src.value);
-					SF.callerWindow.generatePreview();
+			if (AS.field=="href") {		
+				AS.callerWindow.document.forms[0].title.value=filename;	
+				AS.callerWindow.document.forms[0].href.value=value;	
+			} else if (AS.field=="popupurl") {
+				AS.callerWindow.document.forms[0].popupurl.value=value;
+				AS.callerWindow.document.forms[0].popupname.value=filenamewithoutext;
+				AS.callerWindow.buildOnClick();
+			} else if (AS.field=="longdesc") {
+				AS.callerWindow.document.forms[0].longdesc.value=value;
+			} else if (AS.field=="src") {
+				AS.callerWindow.document.forms[0].src.value=value;
+				if (AS.callerWindow.generatePreview){
+					AS.callerWindow.switchType(AS.callerWindow.document.forms[0].src.value);
+					AS.callerWindow.generatePreview();
 				}
 			} 
 		}
@@ -191,21 +191,21 @@ $_AS['tpl']['tinyscripts'] = '
 			if (value.indexOf("idfile")!=-1)
 				value="'.str_replace($cfg_client["htmlpath"],'',$cfg_client["upl_htmlpath"]).'"+name;
 
-			if (SF.field=="src") {
-				SF.callerWindow.document.forms[0].src.value=value;
-				SF.callerWindow.document.forms[0].title.value=filenamewithoutext;
-				SF.callerWindow.document.forms[0].alt.value=filename;
+			if (AS.field=="src") {
+				AS.callerWindow.document.forms[0].src.value=value;
+				AS.callerWindow.document.forms[0].title.value=filenamewithoutext;
+				AS.callerWindow.document.forms[0].alt.value=filename;
 
-				if (SF.callerWindow.ImageDialog.showPreviewImage)
-					SF.callerWindow.ImageDialog.showPreviewImage(SF.callerWindow.document.forms[0].src.value);
-			} else if (SF.field=="onmouseoversrc") {
-				SF.callerWindow.document.forms[0].onmouseoversrc.value=value;
-			} else if (SF.field=="onmouseoutsrc") {
-				SF.callerWindow.document.forms[0].onmouseoutsrc.value=value;
-			} else if (SF.field=="background_image") {
-				SF.callerWindow.document.forms[0].background_image.value=value;
-			} else if (SF.field=="backgroundimage") {
-				SF.callerWindow.document.forms[0].backgroundimage.value=value;
+				if (AS.callerWindow.ImageDialog.showPreviewImage)
+					AS.callerWindow.ImageDialog.showPreviewImage(AS.callerWindow.document.forms[0].src.value);
+			} else if (AS.field=="onmouseoversrc") {
+				AS.callerWindow.document.forms[0].onmouseoversrc.value=value;
+			} else if (AS.field=="onmouseoutsrc") {
+				AS.callerWindow.document.forms[0].onmouseoutsrc.value=value;
+			} else if (AS.field=="background_image") {
+				AS.callerWindow.document.forms[0].background_image.value=value;
+			} else if (AS.field=="backgroundimage") {
+				AS.callerWindow.document.forms[0].backgroundimage.value=value;
 			}
 
 		}
@@ -993,9 +993,9 @@ $_AS['tpl']['buttons'] = '
     <td width="150" class="head">&nbsp;</td>
     <td class="content7" align="right" colspan="2">
 
-			<input name="sf_safe" value="{saveback2}" id="btn_save_back" class="sf_buttonAction" onclick="document.getElementById(\'apply\').value = 0; CheckEventForm(document.getElementById(\'articleform\'));" onmouseover="this.className=\'sf_buttonActionOver\'" onmouseout="this.className=\'sf_buttonAction\'" type="button">
-			<input name="sf_apply" value="{save}" class="sf_buttonAction" onclick="document.getElementById(\'apply\').value = 1; CheckEventForm(document.getElementById(\'articleform\'));" onmouseover="this.className=\'sf_buttonActionOver\'" onmouseout="this.className=\'sf_buttonAction\'" type="button">
-			<input name="sf_cancel" value="{cancel}" class="sf_buttonAction" onclick="window.location=\'{back}\'" onmouseover="this.className=\'sf_buttonActionCancelOver\'" onmouseout="this.className=\'sf_buttonAction\'" type="button">
+			<input name="sf_safe" value="{saveback2}" id="btn_save_back" class="sf_buttonAction" onclick="document.getElementById(\'apply\').value = 0; CheckEventForm(document.getElementById(\'articleform\'));" type="button">
+			<input name="sf_apply" value="{save}" class="sf_buttonAction" onclick="document.getElementById(\'apply\').value = 1; CheckEventForm(document.getElementById(\'articleform\'));" type="button">
+			<input name="sf_cancel" value="{cancel}" class="sf_buttonActionCancel" onclick="window.location=\'{back}\'" type="button">
     </td>
 </tr>
 ';

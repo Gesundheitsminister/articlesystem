@@ -61,8 +61,8 @@ $_AS['tpl']['buttons'] = '
 <tr>
     <td colspan="2" align="right" id="buttons_settings" style="visibility:hidden">
 			<input type="checkbox" id="settings_global" name="settings_global" value="true"/>&nbsp;<label for="settings_global">{foralllangs}</label>&nbsp;
-			<input name="sf_safe" value="{save2}" class="sf_buttonAction" onclick="CheckSettingsForm(document.getElementById(\'settingsform\'));" onmouseover="this.className=\'sf_buttonActionOver\'" onmouseout="this.className=\'sf_buttonAction\'" type="button">
-			<input name="sf_cancel" value="{cancel}" class="sf_buttonAction" onclick="window.location=\'{back}\'" onmouseover="this.className=\'sf_buttonActionCancelOver\'" onmouseout="this.className=\'sf_buttonAction\'" type="button">
+			<input name="sf_safe" value="{save2}" class="sf_buttonAction" onclick="CheckSettingsForm(document.getElementById(\'settingsform\'));" type="button">
+			<input name="sf_cancel" value="{cancel}" class="sf_buttonActionCancel" onclick="window.location=\'{back}\'" type="button">
     </td>
 </tr>
 ';
@@ -246,7 +246,7 @@ $_AS['tpl']['buttons_articlesettings'] = '
 <tr>
     <td colspan="7" align="right" id="buttons_articlesettings">
 			<input type="checkbox" id="settings_global" name="settings_global" value="true"/>&nbsp;<label for="settings_global">{foralllangs}</label>&nbsp;
-			<input name="sf_safe" value="{lng_save}" class="sf_buttonAction" onclick="CheckSettingsForm(document.getElementById(\'articlesettingsform\'));" onmouseover="this.className=\'sf_buttonActionOver\'" onmouseout="this.className=\'sf_buttonAction\'" type="button">
+			<input name="sf_safe" value="{lng_save}" class="sf_buttonAction" onclick="CheckSettingsForm(document.getElementById(\'articlesettingsform\'));" type="button">
     </td>
 </tr>
 ';
@@ -255,9 +255,9 @@ $_AS['tpl']['buttons_articleelementsettings'] = '
 <tr>
     <td colspan="7" align="right" id="buttons_articlesettings">
 			<div style="float:right;vertical-align:top;"><input type="checkbox" id="settings_global" name="settings_global" value="true"/>&nbsp;<label for="settings_global">{foralllangs}</label>&nbsp;
-			<input name="sf_safe" value="{lng_saveback2}" id="btn_save_back" class="sf_buttonAction" onclick="document.getElementById(\'back\').value = 1;CheckSettingsForm(document.getElementById(\'articlesettingsform\'));" onmouseover="this.className=\'sf_buttonActionOver\'" onmouseout="this.className=\'sf_buttonAction\'" type="button">
-			<input name="sf_safe" value="{lng_save}" class="sf_buttonAction" onclick="CheckSettingsForm(document.getElementById(\'articlesettingsform\'));" onmouseover="this.className=\'sf_buttonActionOver\'" onmouseout="this.className=\'sf_buttonAction\'" type="button">
-			<input name="sf_cancel" value="{lng_back}" class="sf_buttonAction" onclick="window.location=\'{back}\'" onmouseover="this.className=\'sf_buttonActionCancelOver\'" onmouseout="this.className=\'sf_buttonAction\'" type="button">
+			<input name="sf_safe" value="{lng_saveback2}" id="btn_save_back" class="sf_buttonAction" onclick="document.getElementById(\'back\').value = 1;CheckSettingsForm(document.getElementById(\'articlesettingsform\'));"  type="button">
+			<input name="sf_safe" value="{lng_save}" class="sf_buttonAction" onclick="CheckSettingsForm(document.getElementById(\'articlesettingsform\'));" type="button">
+			<input name="sf_cancel" value="{lng_back}" class="sf_buttonAction" onclick="window.location=\'{back}\'" type="button">
     	</div>
     </td>
 </tr>

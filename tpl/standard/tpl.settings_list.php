@@ -142,7 +142,7 @@ $_AS['tpl']['buttons'] = '
 <tr>
     <td colspan="2" align="right" id="buttons_settings">
 			<input type="checkbox" id="settings_global" name="settings_global" value="true"/>&nbsp;<label for="settings_global">{foralllangs}</label>&nbsp;
-			<input name="sf_safe" value="{save}" class="sf_buttonAction" onclick="CheckSettingsForm(document.getElementById(\'settingsform\'));" onmouseover="this.className=\'sf_buttonActionOver\'" onmouseout="this.className=\'sf_buttonAction\'" type="button">
+			<input name="sf_safe" value="{save}" class="sf_buttonAction" onclick="CheckSettingsForm(document.getElementById(\'settingsform\'));" type="button">
     </td>
 </tr>
 ';

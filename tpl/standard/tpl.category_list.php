@@ -52,7 +52,7 @@ $_AS['tpl']['list_new'] = '
 $_AS['tpl']['buttons'] = '
 <tr>
     <td colspan="3" align="right" id="buttons_category">
-			<input name="sf_safe" value="{lng_button_label}" class="sf_buttonAction" onclick="CheckCategoryForm(document.getElementById(\'categoryform\'));" onmouseover="this.className=\'sf_buttonActionOver\'" onmouseout="this.className=\'sf_buttonAction\'" type="button">
+			<input name="sf_safe" value="{lng_button_label}" class="sf_buttonAction" onclick="CheckCategoryForm(document.getElementById(\'categoryform\'));" type="button">
     </td>
 </tr>
 ';
