@@ -2,6 +2,15 @@ Changelog
 ================================================================================================
 
 
+Articlesystem XML module v1.7.1
+------------------------------------------------------------------------------------------------
+Internal versionnumber: 01.07.01<br/>
+Release: 14.11.2013
+
+* NOTE: No changes on module, just updated modules version number
+
+
+
 Articlesystem XML module v1.0.6
 ------------------------------------------------------------------------------------------------
 Internal versionnumber: 01.00.06<br/>
