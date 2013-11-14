@@ -2,6 +2,15 @@ Changelog
 ================================================================================================
 
 
+Articlesystem RSS module v1.7.1
+------------------------------------------------------------------------------------------------
+Internal versionnumber: 01.07.01<br/>
+Release: 14.11.2013
+
+* NOTE: No changes on module, just updated modules version number
+
+
+
 Articlesystem RSS module v1.0.0-RC5
 ------------------------------------------------------------------------------------------------
 Internal versionnumber: 00.09.05 (1.0 RC 5)<br/>
