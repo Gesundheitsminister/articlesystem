@@ -2,6 +2,17 @@ Changelog
 ================================================================================================
 
 
+Articlesystem plugin v1.7.1
+------------------------------------------------------------------------------------------------
+Internal versionnumber: 01.07.01<br/>
+Release: 15.11.2013
+
+* FIXED: Wrong jQuery inclusion since Sefrengo v1.5.0
+* CHANGED: Updated jQuery.datePicker to latest version
+* CHANGED: Updated button style to backend skin from Sefrengo v1.5.0
+
+
+
 Articlesystem plugin v1.6.10
 ------------------------------------------------------------------------------------------------
 Internal versionnumber: 01.06.10<br/>
