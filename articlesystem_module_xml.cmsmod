@@ -1,0 +1,3715 @@
+<?xml version='1.0' encoding='ISO-8859-1'?>
+<modul version='0.4' date='1306235189'>
+   <name>Artikelsystem XML</name>
+   <cat>Tools</cat>
+   <version>1.0.6</version>
+   <author>1</author>
+   <created>1306227241</created>
+   <lastmodified>1306235074</lastmodified>
+   <deletable>1</deletable>
+   <description>Artikelsystem-Plugin - XML-Modul - Generiert eine XML-Datei aus Artikeldaten und erzeugt einen Link zur XML-Datei.</description>
+   <input>&lt;?php
+// Artikelsystem RSS
+// by Alexander M. Korn
+// amk@gmx.info
+
+$is_dev = false;
+
+if($is_dev)
+	include 'C:/_server/www/_sefrengo/mod_dev/Artikelsystem RSS/mod_input.php';
+else {
+
+//config mode
+$mip_form['0']['desc'] = 'Konfigurationsmodus';
+$mip_form['0']['cat'] = 'option';
+$mip_form['0']['size'] = '1';
+$mip_form['0']['option_desc'][] = 'Normal';
+$mip_form['0']['option_val'][] =  '';
+#$mip_form['0']['option_desc'][] = 'Erweitert';
+#$mip_form['0']['option_val'][] =  'advanced';
+$mip_form['0']['option_desc'][] = 'Ausgeblendet';
+$mip_form['0']['option_val'][] =  'hidden';
+$mip_form['0']['cms_var'] = 'MOD_VAR[0]';
+$mip_form['0']['cms_val'] = $cms_mod['value']['0'];
+$mip_form['0']['flag'] = 'reload';
+
+//config mode
+$mip_form['1000000']['desc'] = 'Zu nutzende Datenbank';
+$mip_form['1000000']['cat'] = 'option';
+$mip_form['1000000']['size'] = '1';
+$AS_configtemp['sql'] = &quot;SHOW TABLES&quot;;
+$db-&gt;query($AS_configtemp['sql']);
+$db-&gt;next_record();
+$_AS['db_tables']=array();
+while($db-&gt;next_record()){
+	if (strpos($db-&gt;f('0'),'articlesystem')!==false) {
+		$AS_configtemp['tname'] = explode('_',$db-&gt;f('0'));
+		$_AS['db_tables'][$AS_configtemp['tname'][2]] = $AS_configtemp['tname'][2];
+	}
+}
+foreach($_AS['db_tables'] as $v) {
+	$AS_configtemp['sql'] = &quot;SELECT value FROM  &quot;.$cms_db['values'].&quot; WHERE group_name='lang' AND key1='nav_&quot;.$v.&quot;' AND idclient='$client'&quot;;
+	$db-&gt;query($AS_configtemp['sql']);
+	$db-&gt;next_record();
+	
+	$mip_form['1000000']['option_desc'][] = strtoupper($v).' ('.htmlentities(stripslashes($db-&gt;f('value')),ENT_COMPAT,'UTF-8').')';
+	$mip_form['1000000']['option_val'][] =  $v;
+}
+$mip_form['1000000']['cms_var'] = 'MOD_VAR[1000000]';
+$mip_form['1000000']['cms_val'] = $cms_mod['value']['1000000'];
+$mip_form['1000000']['cms_val_default'] = 'articlesystem';
+$mip_form['1000000']['flag'] = 'reload';
+
+if (empty($cms_mod['value']['1000000']))
+	$cms_mod['value']['1000000']='articlesystem';
+
+
+
+$mip_form['1']['cat'] = 'option';
+$mip_form['1']['type'] = '';
+$mip_form['1']['tab'] = '0';
+$mip_form['1']['desc'] = '&lt;strong&gt;XML-Generierung aktiviert&lt;/strong&gt;';
+$mip_form['1']['cms_var'] = 'MOD_VAR[1]';
+$mip_form['1']['cms_val'] = $cms_mod['value']['1'];
+$mip_form['1']['cms_val_default'] = '3';
+$mip_form['1']['option_desc'][]= 'Ja';
+$mip_form['1']['option_val'][]= '0';
+$mip_form['1']['option_desc'][]= 'Ja (nur Frontend)';
+$mip_form['1']['option_val'][]= '2';
+$mip_form['1']['option_desc'][]= 'Nein';
+$mip_form['1']['option_val'][]= '1';
+$mip_form['1']['flag'] = 'reload';
+
+
+$mip_form['3']['cat'] = 'option';
+$mip_form['3']['type'] = '';$mip_form['3']['rows'] = '1';
+$mip_form['3']['tab'] = '0';
+$mip_form['3']['desc'] = 'Artikeleinträge bis';
+$mip_form['3']['cms_var'] = 'MOD_VAR[3]';
+$mip_form['3']['cms_val'] = $cms_mod['value']['3'];
+$mip_form['3']['cms_val_default'] = '0';
+$mip_form['3']['option_desc'][]= 'zum aktuellen Tag - 23:59 Uhr';
+$mip_form['3']['option_val'][]= '0';
+$mip_form['3']['option_desc'][]= 'zum aktuellen Tag und aktueller Uhrzeit';
+$mip_form['3']['option_val'][]= '1';
+
+
+
+$mip_form['4']['cat'] = 'option';
+$mip_form['4']['type'] = '';
+$mip_form['4']['tab'] = '0';
+$mip_form['4']['desc'] = 'Permanent-Modus &lt;small&gt;&lt;br/&gt;(Bei jedem Seitenaufruf XML-Dateien generieren - abhängig von&lt;br/&gt;der Einstellungen bzgl. Veränderungen in Artikeln/der Artikelliste.&lt;br/&gt;&lt;strong&gt;Das Update-Intervall wird dadurch deaktiviert.&lt;/strong&gt;)';
+$mip_form['4']['cms_var'] = 'MOD_VAR[4]';
+$mip_form['4']['cms_val'] = $cms_mod['value']['4'];
+$mip_form['4']['cms_val_default'] = '0';
+$mip_form['4']['option_desc'][]= 'DEAKTIVIERT';
+$mip_form['4']['option_val'][]= '0';
+$mip_form['4']['option_desc'][]= '!!! A K T I V !!!';
+$mip_form['4']['option_val'][]= '1';
+
+
+$mip_form['4000']['cat'] = 'option';
+$mip_form['4000']['type'] = '';
+$mip_form['4000']['tab'] = '0';
+$mip_form['4000']['desc'] = '&lt;strong&gt;Nur bei Veränderungen der Artikel/-Artikelliste generieren&lt;/strong&gt;';
+$mip_form['4000']['cms_var'] = 'MOD_VAR[4000]';
+$mip_form['4000']['cms_val'] = $cms_mod['value']['4000'];
+$mip_form['4000']['cms_val_default'] = 'true';
+$mip_form['4000']['option_desc'][]= 'Nein';
+$mip_form['4000']['option_val'][]= 'false';
+$mip_form['4000']['option_desc'][]= 'Ja';
+$mip_form['4000']['option_val'][]= 'true';
+
+
+
+$mip_form['9']['cat'] = 'option';
+$mip_form['9']['type'] = '';
+$mip_form['9']['tab'] = '0';
+$mip_form['9']['desc'] = '&lt;strong&gt;Spezielle Artikeldaten-Behandlung&lt;/strong&gt;&lt;small&gt;&lt;br/&gt;&lt;strong&gt;&quot;Kapselung&quot; &lt;/strong&gt;erlaubt HTML in den Artikeldaten durch Kapselung&lt;br/&gt;aller Artikelelemente mittels &amp;lt;![CDATA[ ... ]]&amp;gt;-Bereiche.&lt;br/&gt;&lt;strong&gt;&quot;Zeichenkonvertierung&quot;&lt;/strong&gt; führt eine performancelastige Zeichenkonvertierung durch, um valides XML zu generieren.&lt;br/&gt;&lt;strong&gt;&quot;Keine Behandlung&quot;&lt;/strong&gt; gibt die Artikeldaten ohne besondere Behandlung aus.&lt;/small&gt;';
+$mip_form['9']['cms_var'] = 'MOD_VAR[9]';
+$mip_form['9']['cms_val'] = $cms_mod['value']['9'];
+$mip_form['9']['cms_val_default'] = '0';
+$mip_form['9']['option_desc'][]= 'Kapselung';
+$mip_form['9']['option_val'][]= '0';
+$mip_form['9']['option_desc'][]= 'Zeichenkonvertierung';
+$mip_form['9']['option_val'][]= '1';
+$mip_form['9']['option_desc'][]= 'Kein Behandlung';
+$mip_form['9']['option_val'][]= '2';
+
+
+// Datumformat
+$mip_form['10']['cat'] = 'txt';
+$mip_form['10']['type'] = '';
+$mip_form['10']['rows'] = '1';
+$mip_form['10']['desc'] = '&lt;small&gt;Tag: {day}, Monat: {month}, Jahr: {year}&lt;br/&gt;&lt;strong&gt;{startdate} {enddate} {range_date_from} {range_date_to}&lt;/small&gt;&lt;/strong&gt;';
+$mip_form['10']['cms_var'] = 'MOD_VAR[10]';
+$mip_form['10']['cms_val'] = $cms_mod['value']['10'];
+$mip_form['10']['cms_val_default'] = '{day}.{month}.{year}';
+
+$mip_form['10010']['cat'] = 'txt';
+$mip_form['10010']['type'] = '';
+$mip_form['10010']['rows'] = '1';
+$mip_form['10010']['desc'] = 'Hauptausgabe - Tag&lt;strong&gt;&lt;small&gt;&lt;br/&gt;{range_date_from:day} {range_date_to:day}&lt;/small&gt;&lt;/strong&gt;';
+$mip_form['10010']['cms_var'] = 'MOD_VAR[10010]';
+$mip_form['10010']['cms_val'] = $cms_mod['value']['10010'];
+$mip_form['10010']['cms_val_default'] = 'd';
+
+$mip_form['10011']['cat'] = 'txt';
+$mip_form['10011']['type'] = '';
+$mip_form['10011']['rows'] = '1';
+$mip_form['10011']['desc'] = 'Hauptausgabe - Monat&lt;strong&gt;&lt;small&gt;&lt;br/&gt;{range_date_from:month} {range_date_to:month}&lt;/small&gt;&lt;/strong&gt;';
+$mip_form['10011']['cms_var'] = 'MOD_VAR[10011]';
+$mip_form['10011']['cms_val'] = $cms_mod['value']['10011'];
+$mip_form['10011']['cms_val_default'] = 'm';
+
+$mip_form['10012']['cat'] = 'txt';
+$mip_form['10012']['type'] = '';
+$mip_form['10012']['rows'] = '1';
+$mip_form['10012']['desc'] = 'Hauptausgabe - Jahr&lt;strong&gt;&lt;small&gt;&lt;br/&gt;{range_date_from:year} {range_date_to:year}&lt;/small&gt;&lt;/strong&gt;';
+$mip_form['10012']['cms_var'] = 'MOD_VAR[10012]';
+$mip_form['10012']['cms_val'] = $cms_mod['value']['10012'];
+$mip_form['10012']['cms_val_default'] = 'Y';
+
+$mip_form['10110']['cat'] = 'txt';
+$mip_form['10110']['type'] = '';
+$mip_form['10110']['rows'] = '1';
+$mip_form['10110']['desc'] = 'Liste - Tag&lt;strong&gt;&lt;small&gt;&lt;br/&gt;{startdate:day}  {enddate:day} {custom:&lt;em&gt;1-35&lt;/em&gt;:day}&lt;/small&gt;&lt;/strong&gt;';
+$mip_form['10110']['cms_var'] = 'MOD_VAR[10110]';
+$mip_form['10110']['cms_val'] = $cms_mod['value']['10110'];
+$mip_form['10110']['cms_val_default'] = 'd';
+
+$mip_form['10111']['cat'] = 'txt';
+$mip_form['10111']['type'] = '';
+$mip_form['10111']['rows'] = '1';
+$mip_form['10111']['desc'] = 'Liste - Monat&lt;strong&gt;&lt;small&gt;&lt;br/&gt;{startdate:month}  {enddate:month} {custom:&lt;em&gt;1-35&lt;/em&gt;:month}&lt;/small&gt;&lt;/strong&gt;';
+$mip_form['10111']['cms_var'] = 'MOD_VAR[10111]';
+$mip_form['10111']['cms_val'] = $cms_mod['value']['10111'];
+$mip_form['10111']['cms_val_default'] = 'm';
+
+$mip_form['10112']['cat'] = 'txt';
+$mip_form['10112']['type'] = '';
+$mip_form['10112']['rows'] = '1';
+$mip_form['10112']['desc'] = 'Liste - Jahr&lt;strong&gt;&lt;small&gt;&lt;br/&gt;{startdate:year}  {enddate:year}  {custom:&lt;em&gt;1-35&lt;/em&gt;:year}&lt;/small&gt;&lt;/strong&gt;';
+$mip_form['10112']['cms_var'] = 'MOD_VAR[10112]';
+$mip_form['10112']['cms_val'] = $cms_mod['value']['10112'];
+$mip_form['10112']['cms_val_default'] = 'Y';
+
+
+$mip_form['11100']['cat'] = 'txt';
+$mip_form['11100']['type'] = '';
+$mip_form['11100']['rows'] = '1';
+$mip_form['11100']['desc'] = '&lt;strong&gt;Locale-Einstellung &lt;small&gt;(PHP-Funktion setlocale())&lt;/small&gt;&lt;/strong&gt;';
+$mip_form['11100']['cms_var'] = 'MOD_VAR[11100]';
+$mip_form['11100']['cms_val'] = $cms_mod['value']['11100'];
+$mip_form['11100']['cms_val_default'] = &quot;LC_TIME,de_DE@euro,de_DE,de,ge&quot;;
+
+$mip_form['11110']['cat'] = 'txt';
+$mip_form['11110']['type'] = '';
+$mip_form['11110']['rows'] = '1';
+$mip_form['11110']['desc'] = 'Liste - Tag&lt;strong&gt;&lt;small&gt;&lt;br/&gt;{startdate:day2}  {enddate:day2} {custom:&lt;em&gt;1-35&lt;/em&gt;:day2}&lt;/small&gt;&lt;/strong&gt;';
+$mip_form['11110']['cms_var'] = 'MOD_VAR[11110]';
+$mip_form['11110']['cms_val'] = $cms_mod['value']['11110'];
+$mip_form['11110']['cms_val_default'] = '%A';
+
+$mip_form['11111']['cat'] = 'txt';
+$mip_form['11111']['type'] = '';
+$mip_form['11111']['rows'] = '1';
+$mip_form['11111']['desc'] = 'Liste - Monat&lt;strong&gt;&lt;small&gt;&lt;br/&gt;{startdate:month2}  {enddate:month2} {custom:&lt;em&gt;1-35&lt;/em&gt;:month2}&lt;/small&gt;&lt;/strong&gt;';
+$mip_form['11111']['cms_var'] = 'MOD_VAR[11111]';
+$mip_form['11111']['cms_val'] = $cms_mod['value']['11111'];
+$mip_form['11111']['cms_val_default'] = '%B';
+
+// Zeitformat
+$mip_form['11']['cat'] = 'txt';
+$mip_form['11']['type'] = '';
+$mip_form['11']['rows'] = '1';
+$mip_form['11']['desc'] = '&lt;small&gt;Stunde: {hour}, Minute: {minute}&lt;br/&gt;&lt;strong&gt;{starttime24} {endtime24} {starttime12} {endtime12}&lt;br/&gt; {range_time_from} {range_time_to}&lt;/small&gt;&lt;/strong&gt;&lt;br/&gt;
+';
+$mip_form['11']['cms_var'] = 'MOD_VAR[11]';
+$mip_form['11']['cms_val'] = $cms_mod['value']['11'];
+$mip_form['11']['cms_val_default'] = '{hour}:{minute} Uhr';
+
+
+
+
+// Template Detailansicht
+$mip_form['71']['desc'] = '&lt;strong&gt;Artikel-Detailseite&lt;/strong&gt; &lt;small&gt;(idcatside oder 0 eingeben)&lt;br/&gt;(0 = automatisch - gemäß Kategorie-Routing&lt;br/&gt;oder Seite in welcher die XML-Datei erzeugt wurde)&lt;/small&gt;';
+$mip_form['71']['cat'] = 'txt';
+$mip_form['71']['cms_var'] = 'MOD_VAR[71]';
+$mip_form['71']['cms_val'] = $cms_mod['value']['71'];
+$mip_form['71']['cms_val_default'] = '0';
+
+// Artikel aus dieser Kategorie anzeigen
+$mip_form['8']['cat'] = 'option';
+$mip_form['8']['type'] = '';
+$mip_form['8']['rows'] = '1';
+$mip_form['8']['desc'] = '&lt;strong&gt;Artikel aus Kategorie&lt;/strong&gt;';
+$mip_form['8']['cms_var'] = 'MOD_VAR[8]';
+$mip_form['8']['cms_val'] = $cms_mod['value']['8'];
+$mip_form['8']['cms_val_default'] = '0';
+$mip_form['8']['option_desc'][] = 'Alle';
+$mip_form['8']['option_val'][] = '0';
+#$mip_form['8']['option_desc'][] = 'Alle (gemüü aktueller Seitensprache)';
+#$mip_form['8']['option_val'][] = 'langdep';
+
+
+//AdoDB initialtisieren
+$adodb =&amp; $GLOBALS['sf_factory']-&gt;getObject('DATABASE', 'Ado');
+$sql = &quot;SELECT
+            A.idlang, A.name
+        FROM
+            &quot;.$cfg_cms['db_table_prefix'].&quot;lang A
+        LEFT JOIN
+            &quot;.$cfg_cms['db_table_prefix'].&quot;clients_lang B USING(idlang)
+        WHERE
+            B.idclient='&quot;.$client.&quot;'
+        ORDER BY
+            idlang&quot;;
+$rs = $adodb-&gt;Execute($sql);
+
+$AS_configtemp['lang'] = array();
+while (!$rs-&gt;EOF) {
+    $AS_configtemp['lang'][$rs-&gt;fields[0]] = $rs-&gt;fields[1];
+    $rs-&gt;MoveNext();
+}
+
+$rs-&gt;Close();
+
+$sql = &quot;SELECT idcategory, name, idlang FROM &quot;.$cfg_cms['db_table_prefix'].&quot;plug_&quot;.$cms_mod['value']['1000000'].&quot;_category WHERE idclient='&quot;.$client.&quot;' ORDER BY idlang,hash ASC&quot;; // AND idlang='&quot;.$idlang.&quot;'
+$rs = $adodb-&gt;Execute($sql);
+
+$AS_configtemp['catinfo']='';
+
+while (!$rs-&gt;EOF) {
+		$AS_configtemp['catinfo'] .= '&lt;tr&gt;&lt;td&gt;&lt;small&gt;'.
+																	$AS_configtemp['lang'][$rs-&gt;fields[2]].
+																	'&lt;/small&gt;&lt;/td&gt;&lt;td&gt;&lt;small&gt;&lt;strong&gt;'.
+																	$rs-&gt;fields[1].
+																	'&lt;/strong&gt;&lt;/small&gt;&lt;/td&gt;&lt;td&gt;&lt;small&gt;Id'.
+																	'&lt;/small&gt;&lt;/td&gt;&lt;td align=&quot;right&quot;&gt;&lt;small&gt;&lt;strong&gt;'.
+																	$rs-&gt;fields[0].
+																	'&lt;/strong&gt;&lt;/small&gt;&lt;/td&gt;&lt;/tr&gt;';
+    $mip_form['8']['option_desc'][] = '('.$AS_configtemp['lang'][$rs-&gt;fields[2]].') '.$rs-&gt;fields[1];
+    $mip_form['8']['option_val'][] = $rs-&gt;fields[0];
+
+    $rs-&gt;MoveNext();
+}
+$rs-&gt;Close();
+
+unset($adodb, $sql, $rs);
+
+
+// Template Listenansicht - Body
+$mip_form['5']['desc'] = '&lt;strong&gt;Verbindungstemplate&lt;/strong&gt;';
+$mip_form['5']['cat'] = 'txtarea';
+$mip_form['5']['rows'] = '14';
+$mip_form['5']['type'] = 'long';
+$mip_form['5']['cms_var'] = 'MOD_VAR[5]';
+$mip_form['5']['cms_val'] = $cms_mod['value']['5'];
+$mip_form['5']['cms_val_default'] = '&lt;rss version=&quot;2.0&quot;&gt;
+	&lt;channel&gt;
+	&lt;title&gt;RSS-Feed - {category}&lt;/title&gt;
+	&lt;link&gt;{site_url}&lt;/link&gt;
+	&lt;description&gt;Beschreibung des Feeds&lt;/description&gt;
+	&lt;language&gt;de-de&lt;/language&gt;
+	&lt;copyright&gt;urheberrechtliche Informationen&lt;/copyright&gt;
+	&lt;pubDate&gt;{date}&lt;/pubDate&gt;
+	{content1}
+	&lt;/channel&gt;
+&lt;/rss&gt;
+';
+// legend template single entry
+$mip_form['90005']['cat'] = 'desc';
+$mip_form['90005']['type'] = '';
+$mip_form['90005']['desc'] = '&lt;div id=&quot;legend1&quot; style=&quot;display:none;text-align:right;&quot;&gt;&lt;small&gt;&lt;strong&gt;Inhaltselemente&lt;/strong&gt;&lt;br/&gt;
+{site_url} {date} {time} 
+{content1} {content2} &lt;br/&gt;&lt;/small&gt;&lt;/div&gt;
+&lt;div style=&quot;text-align:right;&quot; onclick=&quot;this.innerHTML=document.getElementById(\'legend1\').innerHTML;&quot;&gt;&lt;small style=&quot;cursor: pointer;&quot;&gt;Hilfe anzeigen&lt;br /&gt;&lt;/small&gt;&lt;/div&gt;';
+
+// Template Listenansicht - Zeile
+$mip_form['6']['desc'] = '&lt;strong&gt;Liste 1 {content1}&lt;/strong&gt;';
+$mip_form['6']['cat'] = 'txtarea';
+$mip_form['6']['rows'] = '12';
+$mip_form['6']['type'] = 'long';
+$mip_form['6']['cms_var'] = 'MOD_VAR[6]';
+$mip_form['6']['cms_val'] = $cms_mod['value']['6'];
+$mip_form['6']['cms_val_default'] = '&lt;item&gt;
+	&lt;title&gt;{title}&lt;/title&gt;
+	&lt;description&gt;{chop}{text}{/chop}&lt;/description&gt;
+	&lt;link&gt;{url}&lt;/link&gt;
+	&lt;author&gt;{custom:1}&lt;/author&gt;
+	&lt;guid&gt;{url}&lt;/guid&gt;
+&lt;/item&gt;
+';
+// legend template single entry
+$mip_form['90006']['cat'] = 'desc';
+$mip_form['90006']['type'] = '';
+$mip_form['90006']['desc'] = '&lt;div id=&quot;legend_MOD_VAR2&quot; style=&quot;display:none;text-align:right;&quot;&gt;&lt;small&gt;&lt;strong&gt;Inhaltselemente&lt;/strong&gt;&lt;br/&gt;
+{title} {teaser} {text} {category} {categoryid} {images} {files} {links} {category} {dates}&lt;br/&gt;
+{image:x} {imageurl:x} {imagelinkurl:x} {imagetitle:x} {imagedesc:x} {imagethumb:x} {imagethumburl:x}&lt;br/&gt;
+{file:x} {fileurl:x} {filetitle:x} {filedesc:x} {filename:x} {fileext:x} {filesize:x}&lt;br/&gt;
+{link:x} {linkurl:x} {linktitle:x} {linkdesc:x}&lt;br/&gt;
+{date:x} {datetitle:x} {datedesc:x} {dateduration:x} {datetime24:x} {datetime12:x} {date:x:day} {date:x:month} {date:x:day2} {date:x:month2} {date:x:year}&lt;br/&gt;
+{custom:&lt;em&gt;1-35&lt;/em&gt;} &lt;span style=&quot;color:#555;&quot;&gt;{custom_data:&lt;em&gt;1-35&lt;/em&gt;}&lt;/span&gt; {custom_label:&lt;em&gt;1-35&lt;/em&gt;} {custom:&lt;em&gt;1-35&lt;/em&gt;:date} {custom:&lt;em&gt;1-35&lt;/em&gt;:time}&lt;br/&gt;{custom:&lt;em&gt;1-35&lt;/em&gt;:day} {custom:&lt;em&gt;1-35&lt;/em&gt;:month} {custom:&lt;em&gt;1-35&lt;/em&gt;:year} {custom:&lt;em&gt;1-35&lt;/em&gt;:timestamp}&lt;br/&gt;
+{custom_&lt;em&gt;&quot;image&quot;-Elemente&lt;/em&gt;:&lt;em&gt;1-35&lt;/em&gt;} {custom_&lt;em&gt;&quot;file&quot;-Elemente&lt;/em&gt;:&lt;em&gt;1-35&lt;/em&gt;} {custom_&lt;em&gt;&quot;link&quot;-Elemente&lt;/em&gt;:&lt;em&gt;1-35&lt;/em&gt;}&lt;br/&gt;
+Spezielle &quot;Custom-Link&quot;-Elemente: {custom_linkidcat:&lt;em&gt;1-35&lt;/em&gt;} {custom_linkidcat:&lt;em&gt;1-35&lt;/em&gt;:idcatside_si&lt;em&gt;1-3&lt;/em&gt;} {custom_linkidcat:&lt;em&gt;1-35&lt;/em&gt;:idcatside_name_si&lt;em&gt;1-3&lt;/em&gt;} {custom_linkidcatside:&lt;em&gt;1-35&lt;/em&gt;}&lt;br/&gt;
+{custom_linkidcat:&lt;em&gt;1-35&lt;/em&gt;:idcat_si&lt;em&gt;1-3&lt;/em&gt;} {custom_linkidcat:&lt;em&gt;1-35&lt;/em&gt;:idcat_name_si&lt;em&gt;1-3&lt;/em&gt;}&lt;br/&gt;
+Alternativ für alle frei definierbaren Felder: {&lt;em&gt;Alias&lt;/em&gt;} &lt;span style=&quot;color:#555;&quot;&gt;{&lt;em&gt;Alias&lt;/em&gt;_data}&lt;/span&gt; {&lt;em&gt;Alias&lt;/em&gt;_label} {&lt;em&gt;Alias&lt;/em&gt;:date} {&lt;em&gt;Alias&lt;/em&gt;:time}&lt;br/&gt;{&lt;em&gt;Alias&lt;/em&gt;:day} {&lt;em&gt;Alias&lt;/em&gt;:month} {&lt;em&gt;Alias&lt;/em&gt;:year} {&lt;em&gt;Alias&lt;/em&gt;:timestamp}&lt;br/&gt;
+{&lt;em&gt;Alias&lt;/em&gt;_&lt;em&gt;&quot;image&quot;-Elemente&lt;/em&gt;:&lt;em&gt;1-35&lt;/em&gt;} {&lt;em&gt;Alias&lt;/em&gt;_&lt;em&gt;&quot;file&quot;-Elemente&lt;/em&gt;:&lt;em&gt;1-35&lt;/em&gt;} {&lt;em&gt;Alias&lt;/em&gt;_&lt;em&gt;&quot;link&quot;-Elemente&lt;/em&gt;:&lt;em&gt;1-35&lt;/em&gt;} &lt;br/&gt;
+{&lt;em&gt;Alias&lt;/em&gt;_linkidcat} {&lt;em&gt;Alias&lt;/em&gt;_linkidcat:idcatside_si&lt;em&gt;1-3&lt;/em&gt;} {&lt;em&gt;Alias&lt;/em&gt;_linkidcat:idcatside_name_si&lt;em&gt;1-3&lt;/em&gt;} {&lt;em&gt;Alias&lt;/em&gt;_linkidcatside}&lt;br/&gt;
+{&lt;em&gt;Alias&lt;/em&gt;_linkidcat:idcat_si&lt;em&gt;1-3&lt;/em&gt;} {&lt;em&gt;Alias&lt;/em&gt;_linkidcat:idcat_name_si&lt;em&gt;1-3&lt;/em&gt;}&lt;br/&gt;
+{startdate} {startdate:day} {startdate:month} {startdate:year}&lt;br/&gt;
+{enddate} {enddate:day} {enddate:month} {enddate:year}&lt;br/&gt;
+{starttime24} {starttime12} {endtime24} {endtime12}&lt;br/&gt;
+{idarticle} {baseurl} {today_timestmap} {idlang} {container_id} {mod_key} {comments_count}&lt;br/&gt;
+&lt;strong&gt;Interaktion&lt;/strong&gt;&lt;br/&gt;{url} &lt;em&gt;(Detailansicht)&lt;/em&gt;&lt;br/&gt;
+&lt;strong&gt;Inhaltslogik/-manipulation&lt;/strong&gt;&lt;br/&gt;
+{prepurl4xml} ... {/prepurl4xml} {preptxt4xml} ... {/preptxt4xml} {preptxt4xml_special} ... {/preptxt4xml_special} &lt;br/&gt;
+&lt;strong&gt;{if_&lt;/strong&gt;&lt;em&gt;Element:x&lt;/em&gt;&lt;strong&gt;} {/if_&lt;/strong&gt;&lt;em&gt;Element:x&lt;/em&gt;&lt;strong&gt;}&lt;/strong&gt; &lt;strong&gt;{if_not_&lt;/strong&gt;&lt;em&gt;Element:x&lt;/em&gt;&lt;strong&gt;} {/if_not_&lt;/strong&gt;&lt;em&gt;Element:x&lt;/em&gt;&lt;strong&gt;}&lt;/strong&gt;&lt;br/&gt;
+&lt;strong&gt;{if_&lt;/strong&gt;&lt;em&gt;Element:x&lt;/em&gt;&lt;strong&gt;=&lt;/strong&gt;&lt;em&gt;Value&lt;/em&gt;&lt;strong&gt;} {/if_&lt;/strong&gt;&lt;em&gt;Element:x&lt;/em&gt;&lt;strong&gt;=&lt;/strong&gt;&lt;em&gt;Value&lt;/em&gt;&lt;strong&gt;}&lt;/strong&gt; &lt;strong&gt;{if_not_&lt;/strong&gt;&lt;em&gt;Element:x&lt;/em&gt;&lt;strong&gt;=&lt;/strong&gt;&lt;em&gt;Value&lt;/em&gt;&lt;strong&gt;} {/if_not_&lt;/strong&gt;&lt;em&gt;Element:x&lt;/em&gt;&lt;strong&gt;=&lt;/strong&gt;&lt;em&gt;Value&lt;/em&gt;&lt;strong&gt;}&lt;/strong&gt;&lt;br/&gt;
+&lt;strong&gt;{if_&lt;/strong&gt;&lt;em&gt;Element:x&lt;/em&gt;&lt;strong&gt;&amp;gt;&lt;/strong&gt;&lt;em&gt;Value&lt;/em&gt;&lt;strong&gt;} {/if_&lt;/strong&gt;&lt;em&gt;Element:x&lt;/em&gt;&lt;strong&gt;&amp;gt;&lt;/strong&gt;&lt;em&gt;Value&lt;/em&gt;&lt;strong&gt;}&lt;/strong&gt; &lt;strong&gt;{if_not_&lt;/strong&gt;&lt;em&gt;Element:x&lt;/em&gt;&lt;strong&gt;&amp;gt;&lt;/strong&gt;&lt;em&gt;Value&lt;/em&gt;&lt;strong&gt;} {/if_not_&lt;/strong&gt;&lt;em&gt;Element:x&lt;/em&gt;&lt;strong&gt;&amp;gt;&lt;/strong&gt;&lt;em&gt;Value&lt;/em&gt;&lt;strong&gt;}&lt;/strong&gt;&lt;br/&gt;
+&lt;strong&gt;{if_&lt;/strong&gt;&lt;em&gt;Element:x&lt;/em&gt;&lt;strong&gt;&amp;lt;&lt;/strong&gt;&lt;em&gt;Value&lt;/em&gt;&lt;strong&gt;} {/if_&lt;/strong&gt;&lt;em&gt;Element:x&lt;/em&gt;&lt;strong&gt;&amp;lt;&lt;/strong&gt;&lt;em&gt;Value&lt;/em&gt;&lt;strong&gt;}&lt;/strong&gt; &lt;strong&gt;{if_not_&lt;/strong&gt;&lt;em&gt;Element:x&lt;/em&gt;&lt;strong&gt;&amp;lt;&lt;/strong&gt;&lt;em&gt;Value&lt;/em&gt;&lt;strong&gt;} {/if_not_&lt;/strong&gt;&lt;em&gt;Element:x&lt;/em&gt;&lt;strong&gt;&amp;lt;&lt;/strong&gt;&lt;em&gt;Value&lt;/em&gt;&lt;strong&gt;}&lt;/strong&gt;&lt;br/&gt;
+Alternativ kann auch der Wert eines anderen Elements für Vergleiche genutzt werden!&lt;br/&gt;Anstelle &lt;em&gt;Value&lt;/em&gt; wird das Element in eckigen Klammern notiert -&gt; [&lt;em&gt;Element:y&lt;/em&gt;].&lt;br/&gt;
+{hide_on_last_item} {/hide_on_last_item} {chop} ... {/chop}&lt;/small&gt;&lt;/div&gt;
+&lt;div style=&quot;text-align:right;line-height:130%&quot; onclick=&quot;this.innerHTML=document.getElementById(\'legend_MOD_VAR2\').innerHTML&quot;&gt;&lt;small style=&quot;cursor: pointer;&quot;&gt;Hilfe anzeigen&lt;br /&gt;&lt;/small&gt;&lt;/div&gt;';
+
+
+// Template Detailansicht
+$mip_form['7']['desc'] = '&lt;strong&gt;Liste 2 {content2}&lt;/strong&gt;';
+$mip_form['7']['cat'] = 'txtarea';
+$mip_form['7']['rows'] = '7';
+$mip_form['7']['type'] = 'long';
+$mip_form['7']['cms_var'] = 'MOD_VAR[7]';
+$mip_form['7']['cms_val'] = $cms_mod['value']['7'];
+$mip_form['7']['cms_val_default'] = '';
+//
+
+
+$mip_form['91003']['cat'] = 'desc';
+$mip_form['91003']['type'] = '';
+$mip_form['91003']['desc'] = '&lt;strong&gt;{chop} {/chop}&lt;/strong&gt;';
+
+//
+$mip_form['1003']['cat'] = 'txt';
+$mip_form['1003']['type'] = '';
+$mip_form['1003']['desc'] = 'max. Zeichen';
+$mip_form['1003']['cms_var'] = 'MOD_VAR[1003]';
+$mip_form['1003']['cms_val'] = $cms_mod['value']['1003'];
+$mip_form['1003']['cms_val_default'] = '200';
+
+//
+$mip_form['1004']['cat'] = 'chk';
+$mip_form['1004']['type'] = '';
+$mip_form['1004']['desc'] = 'in der Mitte kürzen';
+$mip_form['1004']['option_var']['0'] = 'MOD_VAR[1004]';
+$mip_form['1004']['option_val']['0'] = $cms_mod['value']['1004'];
+$mip_form['1004']['option_desc']['0'] = 'ja';
+$mip_form['1004']['option_val_select']['0'] = 'true';
+
+// 
+$mip_form['1005']['cat'] = 'txt';
+$mip_form['1005']['type'] = '';
+$mip_form['1005']['desc'] = 'Anhängsel';
+$mip_form['1005']['cms_var'] = 'MOD_VAR[1005]';
+$mip_form['1005']['cms_val'] = $cms_mod['value']['1005'];
+$mip_form['1005']['cms_val_default'] = ' ... ';
+
+
+
+// Anzahl der Eintraege
+
+$mip_form['48']['desc'] = '&lt;strong&gt;Anzahl der Einträge&lt;/strong&gt; &lt;small&gt;(leer oder 0 = alle)&lt;/small&gt;';
+$mip_form['48']['cat'] = 'txt';
+$mip_form['48']['cms_var'] = 'MOD_VAR[48]';
+$mip_form['48']['cms_val'] = $cms_mod['value']['48'];
+$mip_form['48']['cms_val_default'] = '0';
+
+// Anzahl der Eintraege
+$mip_form['480']['cat'] = 'txt';
+$mip_form['480']['type'] = '';
+$mip_form['480']['desc'] = '&lt;strong&gt;Intervall&lt;/strong&gt; (in Minuten)';
+$mip_form['480']['cms_var'] = 'MOD_VAR[480]';
+$mip_form['480']['cms_val'] = $cms_mod['value']['480'];
+$mip_form['480']['cms_val_default'] = '15';
+
+
+$mip_form['300']['cat'] = 'txtarea';
+$mip_form['300']['type'] = '';
+$mip_form['300']['rows'] = '7';
+$mip_form['300']['desc'] = '&lt;strong&gt;Kategorie-Routing&lt;/strong&gt;&lt;br/&gt;&lt;small&gt;Bestimmt anhand der Ordner- o. Seiten-ID die zu listenden Artikel einer Kategorie und/oder generiert die Artikel-Links entsprechend.&lt;br /&gt;Beispiele:&lt;br /&gt;
+&lt;strong&gt;idcat:13 &gt; 1 &lt;/strong&gt;&lt;i&gt;&lt;br/&gt;(Ist idcat 13 aktiv, wird die Artikelkategorie mit der id 1 gelistet)&lt;/i&gt;&lt;br /&gt;
+&lt;strong&gt;idcatside:34 &gt; 2 &lt;/strong&gt;&lt;i&gt;&lt;br/&gt;(Ist idcatside 34 aktiv, wird die Artikelkategorie mit der id 2 gelistet)&lt;/i&gt;&lt;br/&gt;
+&lt;strong&gt;idcatside:27 &gt; 1,2 &lt;/strong&gt;&lt;i&gt;&lt;br/&gt;(Ist idcatside 27 aktiv, werden die Artikelkategorien mit der id 1 und 2 gelistet)&lt;/i&gt;&lt;/small&gt;';
+$mip_form['300']['cms_var'] = 'MOD_VAR[300]';
+$mip_form['300']['cms_val'] = $cms_mod['value']['300'];
+
+// Anzahl der Eintraege
+$mip_form['302']['cat'] = 'option';
+$mip_form['302']['desc'] = 'Kategorie-Routing nur für Artikel-Link-Generierung &lt;small&gt;{url}&lt;/small&gt; nutzen &lt;small&gt;&lt;br/&gt;(Es werden Artikel aller Kategorien gelistet,&lt;br/&gt;sofern nicht bei &quot;Artikel aus Kategorie&quot; anders definiert.)&lt;/small&gt;';
+$mip_form['302']['cms_var'] = 'MOD_VAR[302]';
+$mip_form['302']['cms_val'] = $cms_mod['value']['302'];
+$mip_form['302']['cms_val_default'] = '0';
+$mip_form['302']['option_desc']['0'] = 'Nein';
+$mip_form['302']['option_val']['0'] = '0';
+$mip_form['302']['option_desc']['1'] = 'Ja';
+$mip_form['302']['option_val']['1'] = '1';
+
+
+$mip_form['301']['cat'] = 'desc';
+$mip_form['301']['type'] = '';
+$mip_form['301']['desc'] = '&lt;div id=&quot;legend30&quot; style=&quot;display:none;text-align:right;&quot;&gt;&lt;small&gt;&lt;table align=&quot;right&quot; cellspacing=&quot;5&quot; cellpadding=&quot;0&quot; border=&quot;0&quot;&gt;'.$AS_configtemp['catinfo'].'&lt;/table&gt;&lt;/small&gt;&lt;/div&gt;
+&lt;div style=&quot;text-align:right;margin-bottom:-20px;&quot; onclick=&quot;this.innerHTML=document.getElementById(\'legend30\').innerHTML;&quot;&gt;&lt;small style=&quot;cursor: pointer;&quot;&gt;Verfügbare Kategorien anzeigen&lt;/small&gt;&lt;/div&gt;';
+
+$mip_form['400']['cat'] = 'txtarea';
+$mip_form['400']['type'] = '';
+$mip_form['400']['rows'] = '5';
+$mip_form['400']['desc'] = 'Sortierung der Einträge&lt;br/&gt;&lt;small&gt;&lt;strong&gt;&lt;em&gt;DATENFELD&lt;/strong&gt; (s.u.) &gt; &lt;strong&gt;SORTIERUNG&lt;/strong&gt; (ASC = aufsteigend, DESC = Absteigend)&lt;/em&gt;&lt;br/&gt;
+&lt;br/&gt;startdate starttime enddate endtime&lt;br/&gt;
+created lastedit&lt;br/&gt;
+category title teaser text&lt;br/&gt;
+custom1-10&lt;/small&gt;';
+$mip_form['400']['cms_var'] = 'MOD_VAR[400]';
+$mip_form['400']['cms_val'] = $cms_mod['value']['400'];
+$mip_form['400']['cms_val_default'] = 'startdate &gt; DESC
+starttime &gt; DESC 
+enddate &gt; DESC
+endtime &gt;DESC
+created &gt; DESC
+title &gt; ASC';
+
+
+
+$mip_form['99999']['cat'] = 'desc';
+$mip_form['99999']['type'] = '';
+$mip_form['99999']['desc'] = '';
+
+$mip_form['99998']['cat'] = 'desc';
+$mip_form['99998']['type'] = '';
+$mip_form['99998']['desc'] = '';
+
+// Navigation template vorwaerts aktiv
+$mip_form['800']['cat'] = 'txt';
+$mip_form['800']['desc'] = '&lt;strong&gt;Modulkennung&lt;/strong&gt; &lt;small&gt;&lt;br/&gt;(muss mit Artikelsystem-Ausgabe-Modul und -RSS-Modul übereinstimmen)&lt;/small&gt;';
+$mip_form['800']['cms_var'] = 'MOD_VAR[800]';
+$mip_form['800']['cms_val'] = $cms_mod['value']['800'];
+$mip_form['800']['cms_val_default'] = '';
+
+
+
+// Navigation template vorwaerts aktiv
+$mip_form['900']['cat'] = 'txt';
+$mip_form['900']['desc'] = '&lt;strong&gt;Pfad/Dateiname &lt;/strong&gt;&lt;small&gt;&lt;br/&gt;Elemente: {category_id} {category_name} {lang_id} {lang_name}&lt;/small&gt;';
+$mip_form['900']['cms_var'] = 'MOD_VAR[900]';
+$mip_form['900']['cms_val'] = $cms_mod['value']['900'];
+$mip_form['900']['cms_val_default'] = 'feed_{category_id}.xml';
+
+$mip_form['920']['desc'] = '&lt;strong&gt;Ausgabe-Template&lt;/strong&gt;&lt;small&gt;&lt;br/&gt;Elemente: {rss_file}&lt;/small&gt;';
+$mip_form['920']['cat'] = 'txtarea';
+$mip_form['920']['rows'] = '4';
+$mip_form['920']['type'] = 'long';
+$mip_form['920']['cms_var'] = 'MOD_VAR[920]';
+$mip_form['920']['cms_val'] = $cms_mod['value']['920'];
+$mip_form['920']['cms_val_default'] = '&lt;link rel=&quot;alternate&quot; type=&quot;application/rss+xml&quot; title=&quot;RSS Feed&quot; href=&quot;{rss_file}&quot; /&gt;';
+
+
+// Anzahl der Eintraege
+$mip_form['700']['cat'] = 'option';
+$mip_form['700']['desc'] = '&lt;strong&gt;Artikeleinzelausgabe&lt;/strong&gt;';
+$mip_form['700']['cms_var'] = 'MOD_VAR[700]';
+$mip_form['700']['cms_val'] = $cms_mod['value']['700'];
+$mip_form['700']['cms_val_default'] = '';
+$mip_form['700']['option_desc']['0'] = 'deaktiviert';
+$mip_form['700']['option_val']['0'] = '';
+$mip_form['700']['option_desc']['1'] = 'Template - Liste 1';
+$mip_form['700']['option_val']['1'] = 'list1';
+$mip_form['700']['option_desc']['2'] = 'Template - Liste 2';
+$mip_form['700']['option_val']['2'] = 'list2';
+
+// Navigation template vorwaerts aktiv
+$mip_form['720']['cat'] = 'txt';
+$mip_form['720']['desc'] = '&lt;strong&gt;Pfad/Dateiname für Einzelausgabe &lt;/strong&gt;&lt;small&gt;&lt;br/&gt;Elemente: {category_id} {category_name} {lang_id} {lang_name} {idarticle} {title} und alle Elemente die im gewählten Listen-Template verwendet werden!&lt;/small&gt;';
+$mip_form['720']['cms_var'] = 'MOD_VAR[720]';
+$mip_form['720']['cms_val'] = $cms_mod['value']['720'];
+$mip_form['720']['cms_val_default'] = 'article_{title}.xml';
+
+
+
+
+mip_formsp($mip_form['0']);//configmode
+
+$mip_form['no_rss_creation'] = array( 480,48,3,9,4,5,90005,6,90006,
+																			7,10,11,10210,10211,10212,400,91003,1003,1004,1005,99999,71,302,
+																			10010,10011,10012,10110,10111,10112,11100,11110,11111,720,700);
+
+$mip_form['hide_in_advanced_mode'] = array() ;
+$mip_form['hide_in_standard_mode'] = array_merge(array() ,  $mip_form['hide_in_advanced_mode'] );
+
+//if simple mode
+if($cms_mod['value']['0'] == '' ){
+   foreach ($mip_form['hide_in_standard_mode']  AS $ke=&gt;$va){
+     $mip_form[$va]['cat'] = 'hidden';
+   }
+ }
+
+
+//hidden config
+if($cms_mod['value']['0'] == 'hidden'){
+  foreach($cms_mod['value'] AS $ke=&gt;$va){
+    if($ke != '0'){
+    ?&gt;
+      &lt;input name=&quot;MOD_VAR[&lt;?php echo $ke; ?&gt;]&quot; type=&quot;hidden&quot; value=&quot;&lt;?php echo htmlentities($va,ENT_COMPAT,'UTF-8');?&gt;&quot;&gt;
+    &lt;?php
+     }
+  }
+}
+//simple, advanced and all config (not hidden config)
+else if($cms_mod['value']['0'] == '' || $cms_mod['value']['0'] == 'advanced' || $cms_mod['value']['0'] == 'all'){
+	
+	//if simple mode
+	if($cms_mod['value']['0'] == ''){
+	   foreach ($mip_form['hide_in_standard_mode']  AS $ke=&gt;$va){
+
+	     $mip_form[$va]['cat'] = 'hidden';
+  		 $mip_form[$va]['cms_var'] = 'MOD_VAR[' . $va . ']';
+			 $mip_form[$va]['cms_val'] = $cms_mod['value'][$va];		     
+	     
+	   }
+	 }
+	
+	//if simple mode
+	if($cms_mod['value']['0'] == 'advanced'){
+	   foreach ($mip_form['hide_in_advanced_mode']  AS $ke=&gt;$va){
+
+	     $mip_form[$va]['cat'] = 'hidden';
+  		 $mip_form[$va]['cms_var'] = 'MOD_VAR[' . $va . ']';
+			 $mip_form[$va]['cms_val'] = $cms_mod['value'][$va];		  
+
+	   }
+	 }
+
+	//if simple mode
+	if($cms_mod['value']['1'] == '1'){
+	   foreach ($mip_form['no_rss_creation']  AS $ke=&gt;$va){
+
+	     $mip_form[$va]['cat'] = 'hidden';
+  		 $mip_form[$va]['cms_var'] = 'MOD_VAR[' . $va . ']';
+			 $mip_form[$va]['cms_val'] = $cms_mod['value'][$va];		  
+
+	   }
+	 }
+	 
+	if (count($_AS['db_tables'])&gt;1) 
+		mip_formsp($mip_form['1000000']);// DB select
+
+
+		mip_forms_tabpane_beginp();
+		mip_forms_tabitem_beginp('Allgemein');	
+
+		mip_formsp($mip_form['1']);		
+		mip_formsp($mip_form['480']); 
+		mip_formsp($mip_form['4000']); 
+		mip_formsp($mip_form['99999']); //br	 
+
+		mip_formsp($mip_form['48']);  
+		mip_formsp($mip_form['99999']); //br	 
+		mip_formsp($mip_form['3']);  
+		mip_formsp($mip_form['400']); //sort
+		mip_formsp($mip_form['99999']); //br	
+		mip_formsp($mip_form['920']);
+	
+		mip_formsp($mip_form['900']);		
+		mip_formsp($mip_form['99998']); //br
+		mip_formsp($mip_form['700']);
+	
+		mip_formsp($mip_form['720']);		
+
+
+
+		mip_formsp($mip_form['99999']); //br
+		mip_formsp($mip_form['8']); //category
+
+		mip_formsp($mip_form['301']);	
+		mip_formsp($mip_form['300']);		
+		mip_formsp($mip_form['302']);	
+
+		mip_formsp($mip_form['99998']); //br
+		mip_formsp($mip_form['71']);
+
+		mip_forms_tabitem_endp();
+
+
+	if($cms_mod['value']['1'] != '1')
+		mip_forms_tabitem_beginp('XML-Templates');	
+		mip_formsp($mip_form['5']); //tpl: list-&gt;body
+		mip_formsp($mip_form['90005']);
+		mip_formsp($mip_form['6']); //tpl: list-&gt;row
+		mip_formsp($mip_form['90006']);
+		mip_formsp($mip_form['99999']); //br
+		mip_formsp($mip_form['7']); //tpl: detail
+		mip_formsp($mip_form['90006']);
+	if($cms_mod['value']['1'] != '1')
+		mip_forms_tabitem_endp();
+
+
+	if($cms_mod['value']['1'] != '1')
+		mip_forms_tabitem_beginp('Element-Templates');
+		mip_formsp($mip_form['10']); //date_format
+		mip_formsp($mip_form['10010']); //date_format
+		mip_formsp($mip_form['10011']); //date_format
+		mip_formsp($mip_form['10012']); //date_format
+		mip_formsp($mip_form['10110']); //date_format
+		mip_formsp($mip_form['10111']); //date_format
+		mip_formsp($mip_form['10112']); //date_format
+		mip_formsp($mip_form['99999']); //br
+		mip_formsp($mip_form['11100']); //date_format
+		mip_formsp($mip_form['11110']); //date_format
+		mip_formsp($mip_form['11111']); //date_format
+
+		mip_formsp($mip_form['11']); //time_format
+	if($cms_mod['value']['1'] != '1')
+		mip_forms_tabitem_endp();
+
+
+		mip_forms_tabitem_beginp('Spezielle Einstellungen');	
+
+			
+
+		mip_formsp($mip_form['9']);  	
+		mip_formsp($mip_form['99999']); //br	
+		mip_formsp($mip_form['91003']);
+		mip_formsp($mip_form['1003']); //chop
+		mip_formsp($mip_form['1004']); //chop	
+		mip_formsp($mip_form['1005']); //chop	
+		mip_formsp($mip_form['99999']); //br
+		mip_formsp($mip_form['800']);
+
+		mip_formsp($mip_form['99999']); //br
+		mip_formsp($mip_form['4']);		
+		mip_forms_tabitem_endp();		
+}
+
+
+}
+unset($mip_form,$AS_configtemp);
+
+?&gt;
+</input>
+   <output>&lt;CMSPHP&gt;
+
+// Artikelsystem RSS
+// by Alexander M. Korn
+// amk@gmx.info
+
+$is_dev = false;
+&lt;/CMSPHP&gt;
+
+&lt;CMSPHP:CACHE&gt;
+    //Alle Variablen, die nur innerhalb des gecachten PHPs sichtbar sind, auch f&amp;uuml;r dynamisches PHP zur Verf&amp;uuml;gung stellen
+    echo '&lt;CMSPHP&gt;';
+    foreach($cms_mod['value'] AS $k =&gt; $v)
+    {
+        echo '$mvars[&quot;'.$k.'&quot;] = &quot;'. addslashes($v) .'&quot;;'.&quot;\n&quot;;
+    }
+    echo '&lt;/CMSPHP&gt;';
+&lt;/CMSPHP:CACHE&gt;
+
+&lt;CMSPHP&gt;
+//print_r($mvars);
+
+$_AS['basedir'] = $cfg_cms['cms_path'].'plugins/articlesystem/';
+
+if($is_dev)
+	include 'C:/_server/www/_sefrengo/mod_dev/Artikelsystem RSS/mod_output.php';
+else {
+
+
+// DB Definition
+
+$_AS['db'] = $mvars['1000000'];
+
+if (empty($_AS['db']))
+	$_AS['db']='articlesystem';
+
+include_once $_AS['basedir'] . 'inc/fnc.articlesystem_utilities.php';
+include_once $_AS['basedir'] . 'inc/fnc.articlesystem_generate.php'; 
+include_once $_AS['basedir'] . 'inc/paginator.php';
+    
+   
+    
+if(! function_exists(asxml_str_chop)){
+	/**
+	* Chop a string into a smaller string.
+	* @author			Aidan Lister &lt;aidan@php.net&gt;
+	* @author2		Alexander M. Korn &lt;amk@gmx.info&gt;
+	* @version		?
+	* @link				http://aidanlister.com/repos/v/function.str_chop.php
+	* @param				mixed	 $string	 The string you want to shorten
+	* @param				int		 $length	 The length you want to shorten the string to
+	* @param				bool	 $center	 If true, chop in the middle of the string
+	* @param				mixed	 $append	 String appended if it is shortened
+	*/
+	function asxml_str_chop($string, $length = 60, $center = true, $append = null)
+	{
+		global $mvars;
+		if (empty($mvars[9]))
+			$string=str_replace(array('&lt;![CDATA[',']]&gt;'),array('',''),$string);
+
+		$string=strip_tags($string);
+		$string=trim($string);
+		if ($mvars[9]==1)		
+			$string=asxml_safe_cr($string,'rev');
+		
+		 // Set the default append string
+		if ($append === null) {
+				 $append = ($center === true) ? ' ... ' : ' ...';
+		}
+
+		preg_match_all('#\&amp;(.*)\;#sU',$string,$entities);
+		$entities[0]=array_unique($entities[0]);
+		
+
+		
+		if (is_array($entities[0]) &amp;&amp; !empty($entities[0]))
+			foreach($entities[0] as $v)
+				$string=(str_replace( $v,utf8_encode(html_entity_decode( $v)),$string));
+		
+		if ($center===&quot;true&quot;)
+			$center=true;			
+		
+		 // Get some measurements
+		 $len_string = strlen($string);
+		 $len_append = strlen($append);
+		 
+		if ($len_string &gt; $length) {
+			
+		 // If the string is longer than the maximum length, we need to chop it
+		 
+				 // Check if we want to chop it in half
+			if ($center === true) {
+				// Get the lengths of each segment
+				$len_start = $length / 2;
+				$len_end = $len_start - $len_append;
+				
+				// Get each segment
+				$seg_start = substr($string, 0, $len_start);
+				$seg_end = substr($string, $len_string - $len_end, $len_end);
+				
+				$seg_start = substr( $seg_start, 0, strrpos ( $seg_start, &quot; &quot;));
+				$seg_end = substr( $seg_end, strpos ( $seg_end, &quot; &quot;)+1);
+				
+				// Stick them together
+				$string = $seg_start . $append . $seg_end;
+			} else {
+				// Otherwise, just chop the end off
+				$string = substr($string, 0, $length - $len_append);
+				$string = substr($string, 0, strrpos ($string, &quot; &quot;)) . $append;
+			}
+		} 
+
+		if ($mvars[9]==1)		
+			return asxml_safe_cr($string,ENT_COMPAT,'UTF-8');	
+		elseif (empty($mvars[9]))
+			return '&lt;![CDATA['.$string.']]&gt;';
+		else
+			return $string;
+	}
+}
+
+// create link
+if (!function_exists('asxml_createLinkUrl')) {
+	function asxml_createLinkUrl($langid, $newidcatside, $is_online) {
+		global $cfg_client, $sess, $view;
+		// backend view
+		if (isset($view) &amp;&amp; $view != &quot;&quot;) {
+			if ($is_online == &quot;1&quot;) {
+				return $sess-&gt;url($cfg_client[&quot;contentfile&quot;].'?idcatside='.$newidcatside.'&amp;lang='.$langid.'&amp;view='.$view);
+			}
+		// frontend view
+		} else {
+			if ($is_online == &quot;1&quot;) {
+				// apache mod_rewrite support = 1
+				if ($cfg_client['url_rewrite'] == '1') {
+					$url_rewrite_in = array(
+						&quot;'(?&lt;!/)&quot;.$cfg_client['contentfile'].&quot;\?idcat=([1-9][0-9]*)(&amp;|&amp;amp;)lang=([1-9][0-9]?)'&quot;,
+						&quot;'(?&lt;!/)&quot;.$cfg_client['contentfile'].&quot;\?idcatside=([1-9][0-9]*)(&amp;|&amp;amp;)lang=([1-9][0-9]?)'&quot;
+					);
+					$url_rewrite_out = array(
+						&quot;cat\\1-\\3.html&quot;,
+						&quot;page\\1-\\3.html&quot;
+					);
+					$linkUrl = $sess-&gt;url($cfg_client[&quot;contentfile&quot;].'?idcatside='.$newidcatside.'&amp;amp;lang='.$langid);
+					$linkUrl = preg_replace($url_rewrite_in, $url_rewrite_out, $linkUrl);
+				// apache mod_rewrite support = 2
+				} elseif ($cfg_client['url_rewrite'] == '2') {
+					$linkUrl = rewriteGetPageUrl($newidcatside, $langid, true);
+				} else {
+					$linkUrl = $sess-&gt;url($cfg_client[&quot;contentfile&quot;].'?idcatside='.$newidcatside.'&amp;amp;lang='.$langid);
+				}
+
+				return $linkUrl;
+			}
+		}
+	}
+}
+if (!function_exists('asxml_snippetReplace')) {
+	function asxml_snippetReplace($content)
+	{
+		global $_AS;
+
+		//no snippet replacement found
+		if ($_AS['snippet_replacement_found'] === false)
+		{
+			return $content;
+		}
+		//figure out if snippet replacement exist
+		else if ($_AS['snippet_replacement_found'] == 'unknown')
+		{
+			if (file_exists($GLOBALS['cfg_cms']['cms_path']. 'plugins/snippet_replacement/inc/class.SnippetReplacement.php'))
+			{
+				include_once $GLOBALS['cfg_cms']['cms_path']. 'plugins/snippet_replacement/inc/class.SnippetReplacement.php';
+				$_AS['snippet_object']  =&amp; new snippetReplacement();
+				$_AS['snippet_replacement_found'] = true;
+			}
+			else
+			{
+				$_AS['snippet_replacement_found'] = false;
+			}
+		}
+		
+		//replace
+		if ($_AS['snippet_replacement_found'] == true)
+		{
+			$content = $_AS['snippet_object']-&gt;replace($content, 'sr_lang', $GLOBALS['client'], $GLOBALS['lang']);
+		}
+		
+		return $content;
+	}
+}
+
+if(! function_exists(asxml_safe_cr)){
+	function asxml_safe_cr($string,$mode=''){
+	 $cr = array(
+	  // http://intertwingly.net/stories/2004/04/14/i18n.html#CleaningWindows
+	  '&amp;#128;' =&gt; '&amp;#8364;',
+	  '&amp;#129;' =&gt; '',
+	  '&amp;#130;' =&gt; '&amp;#8218;',
+	  '&amp;#131;' =&gt; '&amp;#402;',
+	  '&amp;#132;' =&gt; '&amp;#8222;',
+	  '&amp;#133;' =&gt; '&amp;#8230;',
+	  '&amp;#134;' =&gt; '&amp;#8224;',
+	  '&amp;#135;' =&gt; '&amp;#8225;',
+	  '&amp;#136;' =&gt; '&amp;#710;',
+	  '&amp;#137;' =&gt; '&amp;#8240;',
+	  '&amp;#138;' =&gt; '&amp;#352;',
+	  '&amp;#139;' =&gt; '&amp;#8249;',
+	  '&amp;#140;' =&gt; '&amp;#338;',
+	  '&amp;#141;' =&gt; '',
+	  '&amp;#142;' =&gt; '&amp;#381;',
+	  '&amp;#143;' =&gt; '',
+	  '&amp;#144;' =&gt; '',
+	  '&amp;#145;' =&gt; '&amp;#8216;',
+	  '&amp;#146;' =&gt; '&amp;#8217;',
+	  '&amp;#147;' =&gt; '&amp;#8220;',
+	  '&amp;#148;' =&gt; '&amp;#8221;',
+	  '&amp;#149;' =&gt; '&amp;#8226;',
+	  '&amp;#150;' =&gt; '&amp;#8211;',
+	  '&amp;#151;' =&gt; '&amp;#8212;',
+	  '&amp;#152;' =&gt; '&amp;#732;',
+	  '&amp;#153;' =&gt; '&amp;#8482;',
+	  '&amp;#154;' =&gt; '&amp;#353;',
+	  '&amp;#155;' =&gt; '&amp;#8250;',
+	  '&amp;#156;' =&gt; '&amp;#339;',
+	  '&amp;#157;' =&gt; '',
+	  '&amp;#158;' =&gt; '&amp;#382;',
+	  '&amp;#159;' =&gt; '&amp;#376;',
+	
+	  // HTML and MathML entities
+	  // http://golem.ph.utexas.edu/~distler/blog/NumericEntities.html
+	  '&amp;alpha;' =&gt; '&amp;#x0391;',
+	  '&amp;beta;' =&gt; '&amp;#x0392;',
+	  '&amp;epsilon;' =&gt; '&amp;#x0395;',
+	  '&amp;zeta;' =&gt; '&amp;#x0396;',
+	  '&amp;eta;' =&gt; '&amp;#x0397;',
+	  '&amp;iota;' =&gt; '&amp;#x0399;',
+	  '&amp;kappa;' =&gt; '&amp;#x039a;',
+	  '&amp;mu;' =&gt; '&amp;#x039c;',
+	  '&amp;nu;' =&gt; '&amp;#x039d;',
+	  '&amp;omicron;' =&gt; '&amp;#x039f;',
+	  '&amp;rho;' =&gt; '&amp;#x03a1;',
+	  '&amp;tau;' =&gt; '&amp;#x03a4;',
+	  '&amp;chi;' =&gt; '&amp;#x03a7;',
+	  '&amp;epsilon;' =&gt; '&amp;#x03b5;',
+	  '&amp;zeta;' =&gt; '&amp;#x03b6;',
+	  '&amp;omicron;' =&gt; '&amp;#x03bf;',
+	  '&amp;sigmaf;' =&gt; '&amp;#x03c2;',
+	  '&amp;thetasym;' =&gt; '&amp;#x03d1;',
+	  '&amp;upsih;' =&gt; '&amp;#x03d2;',
+	  '&amp;oline;' =&gt; '&amp;#x203e;',
+	  '&amp;frasl;' =&gt; '&amp;#x2044;',
+	  '&amp;alefsym;' =&gt; '&amp;#x2135;',
+	  '&amp;crarr;' =&gt; '&amp;#x21b5;',
+	  '&amp;empty;' =&gt; '&amp;#x2205;',
+	  '&amp;hearts;' =&gt; '&amp;#x2265;',
+	  '&amp;zwnj;' =&gt; '&amp;#x200c;',
+	  '&amp;zwj;' =&gt; '&amp;#x200d;',
+	  '&amp;lrm;' =&gt; '&amp;#x200e;',
+	  '&amp;rlm;' =&gt; '&amp;#x200f;',
+	  '&amp;sbquo;' =&gt; '&amp;#x201a;',
+	  '&amp;bdquo;' =&gt; '&amp;#x201e;',
+	  '&amp;lsaquo;' =&gt; '&amp;#x2039;',
+	  '&amp;rsaquo;' =&gt; '&amp;#x203a;',
+	  '&amp;euro;' =&gt; '&amp;#x20ac;',
+	  '&amp;angzarr;' =&gt; '&amp;#x0237c;',
+	  '&amp;cirmid;' =&gt; '&amp;#x02aef;',
+	  '&amp;cudarrl;' =&gt; '&amp;#x02938;',
+	  '&amp;cudarrr;' =&gt; '&amp;#x02935;',
+	  '&amp;cularr;' =&gt; '&amp;#x021b6;',
+	  '&amp;cularrp;' =&gt; '&amp;#x0293d;',
+	  '&amp;curarr;' =&gt; '&amp;#x021b7;',
+	  '&amp;curarrm;' =&gt; '&amp;#x0293c;',
+	  '&amp;darr;' =&gt; '&amp;#x021a1;',
+	  '&amp;darr;' =&gt; '&amp;#x021d3;',
+	  '&amp;ddarr;' =&gt; '&amp;#x021ca;',
+	  '&amp;ddotrahd;' =&gt; '&amp;#x02911;',
+	  '&amp;dfisht;' =&gt; '&amp;#x0297f;',
+	  '&amp;dhar;' =&gt; '&amp;#x02965;',
+	  '&amp;dharl;' =&gt; '&amp;#x021c3;',
+	  '&amp;dharr;' =&gt; '&amp;#x021c2;',
+	  '&amp;duarr;' =&gt; '&amp;#x021f5;',
+	  '&amp;duhar;' =&gt; '&amp;#x0296f;',
+	  '&amp;dzigrarr;' =&gt; '&amp;#x027ff;',
+	  '&amp;erarr;' =&gt; '&amp;#x02971;',
+	  '&amp;harr;' =&gt; '&amp;#x021d4;',
+	  '&amp;harr;' =&gt; '&amp;#x02194;',
+	  '&amp;harrcir;' =&gt; '&amp;#x02948;',
+	  '&amp;harrw;' =&gt; '&amp;#x021ad;',
+	  '&amp;hoarr;' =&gt; '&amp;#x021ff;',
+	  '&amp;imof;' =&gt; '&amp;#x022b7;',
+	  '&amp;laarr;' =&gt; '&amp;#x021da;',
+	  '&amp;larr;' =&gt; '&amp;#x0219e;',
+	  '&amp;larrbfs;' =&gt; '&amp;#x0291f;',
+	  '&amp;larrfs;' =&gt; '&amp;#x0291d;',
+	  '&amp;larrhk;' =&gt; '&amp;#x021a9;',
+	  '&amp;larrlp;' =&gt; '&amp;#x021ab;',
+	  '&amp;larrpl;' =&gt; '&amp;#x02939;',
+	  '&amp;larrsim;' =&gt; '&amp;#x02973;',
+	  '&amp;larrtl;' =&gt; '&amp;#x021a2;',
+	  '&amp;latail;' =&gt; '&amp;#x0291b;',
+	  '&amp;latail;' =&gt; '&amp;#x02919;',
+	  '&amp;lbarr;' =&gt; '&amp;#x0290e;',
+	  '&amp;lbarr;' =&gt; '&amp;#x0290c;',
+	  '&amp;ldca;' =&gt; '&amp;#x02936;',
+	  '&amp;ldrdhar;' =&gt; '&amp;#x02967;',
+	  '&amp;ldrushar;' =&gt; '&amp;#x0294b;',
+	  '&amp;ldsh;' =&gt; '&amp;#x021b2;',
+	  '&amp;lfisht;' =&gt; '&amp;#x0297c;',
+	  '&amp;lhar;' =&gt; '&amp;#x02962;',
+	  '&amp;lhard;' =&gt; '&amp;#x021bd;',
+	  '&amp;lharu;' =&gt; '&amp;#x021bc;',
+	  '&amp;lharul;' =&gt; '&amp;#x0296a;',
+	  '&amp;llarr;' =&gt; '&amp;#x021c7;',
+	  '&amp;llhard;' =&gt; '&amp;#x0296b;',
+	  '&amp;loarr;' =&gt; '&amp;#x021fd;',
+	  '&amp;lrarr;' =&gt; '&amp;#x021c6;',
+	  '&amp;lrhar;' =&gt; '&amp;#x021cb;',
+	  '&amp;lrhard;' =&gt; '&amp;#x0296d;',
+	  '&amp;lsh;' =&gt; '&amp;#x021b0;',
+	  '&amp;lurdshar;' =&gt; '&amp;#x0294a;',
+	  '&amp;luruhar;' =&gt; '&amp;#x02966;',
+	  '&amp;map;' =&gt; '&amp;#x02905;',
+	  '&amp;map;' =&gt; '&amp;#x021a6;',
+	  '&amp;midcir;' =&gt; '&amp;#x02af0;',
+	  '&amp;mumap;' =&gt; '&amp;#x022b8;',
+	  '&amp;nearhk;' =&gt; '&amp;#x02924;',
+	  '&amp;nearr;' =&gt; '&amp;#x021d7;',
+	  '&amp;nearr;' =&gt; '&amp;#x02197;',
+	  '&amp;nesear;' =&gt; '&amp;#x02928;',
+	  '&amp;nharr;' =&gt; '&amp;#x021ce;',
+	  '&amp;nharr;' =&gt; '&amp;#x021ae;',
+	  '&amp;nlarr;' =&gt; '&amp;#x021cd;',
+	  '&amp;nlarr;' =&gt; '&amp;#x0219a;',
+	  '&amp;nrarr;' =&gt; '&amp;#x021cf;',
+	  '&amp;nrarr;' =&gt; '&amp;#x0219b;',
+	  '&amp;nrarrc;' =&gt; '&amp;#x02933;&amp;#x00338;',
+	  '&amp;nrarrw;' =&gt; '&amp;#x0219d;&amp;#x00338;',
+	  '&amp;nvharr;' =&gt; '&amp;#x02904;',
+	  '&amp;nvlarr;' =&gt; '&amp;#x02902;',
+	  '&amp;nvrarr;' =&gt; '&amp;#x02903;',
+	  '&amp;nwarhk;' =&gt; '&amp;#x02923;',
+	  '&amp;nwarr;' =&gt; '&amp;#x021d6;',
+	  '&amp;nwarr;' =&gt; '&amp;#x02196;',
+	  '&amp;nwnear;' =&gt; '&amp;#x02927;',
+	  '&amp;olarr;' =&gt; '&amp;#x021ba;',
+	  '&amp;orarr;' =&gt; '&amp;#x021bb;',
+	  '&amp;origof;' =&gt; '&amp;#x022b6;',
+	  '&amp;raarr;' =&gt; '&amp;#x021db;',
+	  '&amp;rarr;' =&gt; '&amp;#x021a0;',
+	  '&amp;rarrap;' =&gt; '&amp;#x02975;',
+	  '&amp;rarrbfs;' =&gt; '&amp;#x02920;',
+	  '&amp;rarrc;' =&gt; '&amp;#x02933;',
+	  '&amp;rarrfs;' =&gt; '&amp;#x0291e;',
+	  '&amp;rarrhk;' =&gt; '&amp;#x021aa;',
+	  '&amp;rarrlp;' =&gt; '&amp;#x021ac;',
+	  '&amp;rarrpl;' =&gt; '&amp;#x02945;',
+	  '&amp;rarrsim;' =&gt; '&amp;#x02974;',
+	  '&amp;rarrtl;' =&gt; '&amp;#x02916;',
+	  '&amp;rarrtl;' =&gt; '&amp;#x021a3;',
+	  '&amp;rarrw;' =&gt; '&amp;#x0219d;',
+	  '&amp;ratail;' =&gt; '&amp;#x0291c;',
+	  '&amp;ratail;' =&gt; '&amp;#x0291a;',
+	  '&amp;rbarr;' =&gt; '&amp;#x02910;',
+	  '&amp;rbarr;' =&gt; '&amp;#x0290f;',
+	  '&amp;rbarr;' =&gt; '&amp;#x0290d;',
+	  '&amp;rdca;' =&gt; '&amp;#x02937;',
+	  '&amp;rdldhar;' =&gt; '&amp;#x02969;',
+	  '&amp;rdsh;' =&gt; '&amp;#x021b3;',
+	  '&amp;rfisht;' =&gt; '&amp;#x0297d;',
+	  '&amp;rhar;' =&gt; '&amp;#x02964;',
+	  '&amp;rhard;' =&gt; '&amp;#x021c1;',
+	  '&amp;rharu;' =&gt; '&amp;#x021c0;',
+	  '&amp;rharul;' =&gt; '&amp;#x0296c;',
+	  '&amp;rlarr;' =&gt; '&amp;#x021c4;',
+	  '&amp;rlhar;' =&gt; '&amp;#x021cc;',
+	  '&amp;roarr;' =&gt; '&amp;#x021fe;',
+	  '&amp;rrarr;' =&gt; '&amp;#x021c9;',
+	  '&amp;rsh;' =&gt; '&amp;#x021b1;',
+	  '&amp;ruluhar;' =&gt; '&amp;#x02968;',
+	  '&amp;searhk;' =&gt; '&amp;#x02925;',
+	  '&amp;searr;' =&gt; '&amp;#x021d8;',
+	  '&amp;searr;' =&gt; '&amp;#x02198;',
+	  '&amp;seswar;' =&gt; '&amp;#x02929;',
+	  '&amp;simrarr;' =&gt; '&amp;#x02972;',
+	  '&amp;slarr;' =&gt; '&amp;#x02190;',
+	  '&amp;srarr;' =&gt; '&amp;#x02192;',
+	  '&amp;swarhk;' =&gt; '&amp;#x02926;',
+	  '&amp;swarr;' =&gt; '&amp;#x021d9;',
+	  '&amp;swarr;' =&gt; '&amp;#x02199;',
+	  '&amp;swnwar;' =&gt; '&amp;#x0292a;',
+	  '&amp;uarr;' =&gt; '&amp;#x0219f;',
+	  '&amp;uarr;' =&gt; '&amp;#x021d1;',
+	  '&amp;uarrocir;' =&gt; '&amp;#x02949;',
+	  '&amp;udarr;' =&gt; '&amp;#x021c5;',
+	  '&amp;udhar;' =&gt; '&amp;#x0296e;',
+	  '&amp;ufisht;' =&gt; '&amp;#x0297e;',
+	  '&amp;uhar;' =&gt; '&amp;#x02963;',
+	  '&amp;uharl;' =&gt; '&amp;#x021bf;',
+	  '&amp;uharr;' =&gt; '&amp;#x021be;',
+	  '&amp;uuarr;' =&gt; '&amp;#x021c8;',
+	  '&amp;varr;' =&gt; '&amp;#x021d5;',
+	  '&amp;varr;' =&gt; '&amp;#x02195;',
+	  '&amp;xharr;' =&gt; '&amp;#x027fa;',
+	  '&amp;xharr;' =&gt; '&amp;#x027f7;',
+	  '&amp;xlarr;' =&gt; '&amp;#x027f8;',
+	  '&amp;xlarr;' =&gt; '&amp;#x027f5;',
+	  '&amp;xmap;' =&gt; '&amp;#x027fc;',
+	  '&amp;xrarr;' =&gt; '&amp;#x027f9;',
+	  '&amp;xrarr;' =&gt; '&amp;#x027f6;',
+	  '&amp;zigrarr;' =&gt; '&amp;#x021dd;',
+	  '&amp;ac;' =&gt; '&amp;#x0223e;',
+	  '&amp;ace;' =&gt; '&amp;#x0223e;&amp;#x00333;',
+	  '&amp;amalg;' =&gt; '&amp;#x02a3f;',
+	  '&amp;barvee;' =&gt; '&amp;#x022bd;',
+	  '&amp;barwed;' =&gt; '&amp;#x02306;',
+	  '&amp;barwed;' =&gt; '&amp;#x02305;',
+	  '&amp;bsolb;' =&gt; '&amp;#x029c5;',
+	  '&amp;cap;' =&gt; '&amp;#x022d2;',
+	  '&amp;capand;' =&gt; '&amp;#x02a44;',
+	  '&amp;capbrcup;' =&gt; '&amp;#x02a49;',
+	  '&amp;capcap;' =&gt; '&amp;#x02a4b;',
+	  '&amp;capcup;' =&gt; '&amp;#x02a47;',
+	  '&amp;capdot;' =&gt; '&amp;#x02a40;',
+	  '&amp;caps;' =&gt; '&amp;#x02229;&amp;#x0fe00;',
+	  '&amp;ccaps;' =&gt; '&amp;#x02a4d;',
+	  '&amp;ccups;' =&gt; '&amp;#x02a4c;',
+	  '&amp;ccupssm;' =&gt; '&amp;#x02a50;',
+	  '&amp;coprod;' =&gt; '&amp;#x02210;',
+	  '&amp;cup;' =&gt; '&amp;#x022d3;',
+	  '&amp;cupbrcap;' =&gt; '&amp;#x02a48;',
+	  '&amp;cupcap;' =&gt; '&amp;#x02a46;',
+	  '&amp;cupcup;' =&gt; '&amp;#x02a4a;',
+	  '&amp;cupdot;' =&gt; '&amp;#x0228d;',
+	  '&amp;cupor;' =&gt; '&amp;#x02a45;',
+	  '&amp;cups;' =&gt; '&amp;#x0222a;&amp;#x0fe00;',
+	  '&amp;cuvee;' =&gt; '&amp;#x022ce;',
+	  '&amp;cuwed;' =&gt; '&amp;#x022cf;',
+	  '&amp;dagger;' =&gt; '&amp;#x02021;',
+	  '&amp;dagger;' =&gt; '&amp;#x02020;',
+	  '&amp;diam;' =&gt; '&amp;#x022c4;',
+	  '&amp;divonx;' =&gt; '&amp;#x022c7;',
+	  '&amp;eplus;' =&gt; '&amp;#x02a71;',
+	  '&amp;hercon;' =&gt; '&amp;#x022b9;',
+	  '&amp;intcal;' =&gt; '&amp;#x022ba;',
+	  '&amp;iprod;' =&gt; '&amp;#x02a3c;',
+	  '&amp;loplus;' =&gt; '&amp;#x02a2d;',
+	  '&amp;lotimes;' =&gt; '&amp;#x02a34;',
+	  '&amp;lthree;' =&gt; '&amp;#x022cb;',
+	  '&amp;ltimes;' =&gt; '&amp;#x022c9;',
+	  '&amp;midast;' =&gt; '&amp;#x0002a;',
+	  '&amp;minusb;' =&gt; '&amp;#x0229f;',
+	  '&amp;minusd;' =&gt; '&amp;#x02238;',
+	  '&amp;minusdu;' =&gt; '&amp;#x02a2a;',
+	  '&amp;ncap;' =&gt; '&amp;#x02a43;',
+	  '&amp;ncup;' =&gt; '&amp;#x02a42;',
+	  '&amp;oast;' =&gt; '&amp;#x0229b;',
+	  '&amp;ocir;' =&gt; '&amp;#x0229a;',
+	  '&amp;odash;' =&gt; '&amp;#x0229d;',
+	  '&amp;odiv;' =&gt; '&amp;#x02a38;',
+	  '&amp;odot;' =&gt; '&amp;#x02299;',
+	  '&amp;odsold;' =&gt; '&amp;#x029bc;',
+	  '&amp;ofcir;' =&gt; '&amp;#x029bf;',
+	  '&amp;ogt;' =&gt; '&amp;#x029c1;',
+	  '&amp;ohbar;' =&gt; '&amp;#x029b5;',
+	  '&amp;olcir;' =&gt; '&amp;#x029be;',
+	  '&amp;olt;' =&gt; '&amp;#x029c0;',
+	  '&amp;omid;' =&gt; '&amp;#x029b6;',
+	  '&amp;ominus;' =&gt; '&amp;#x02296;',
+	  '&amp;opar;' =&gt; '&amp;#x029b7;',
+	  '&amp;operp;' =&gt; '&amp;#x029b9;',
+	  '&amp;oplus;' =&gt; '&amp;#x02295;',
+	  '&amp;osol;' =&gt; '&amp;#x02298;',
+	  '&amp;otimes;' =&gt; '&amp;#x02a37;',
+	  '&amp;otimes;' =&gt; '&amp;#x02297;',
+	  '&amp;otimesas;' =&gt; '&amp;#x02a36;',
+	  '&amp;ovbar;' =&gt; '&amp;#x0233d;',
+	  '&amp;plusacir;' =&gt; '&amp;#x02a23;',
+	  '&amp;plusb;' =&gt; '&amp;#x0229e;',
+	  '&amp;pluscir;' =&gt; '&amp;#x02a22;',
+	  '&amp;plusdo;' =&gt; '&amp;#x02214;',
+	  '&amp;plusdu;' =&gt; '&amp;#x02a25;',
+	  '&amp;pluse;' =&gt; '&amp;#x02a72;',
+	  '&amp;plussim;' =&gt; '&amp;#x02a26;',
+	  '&amp;plustwo;' =&gt; '&amp;#x02a27;',
+	  '&amp;prod;' =&gt; '&amp;#x0220f;',
+	  '&amp;race;' =&gt; '&amp;#x029da;',
+	  '&amp;roplus;' =&gt; '&amp;#x02a2e;',
+	  '&amp;rotimes;' =&gt; '&amp;#x02a35;',
+	  '&amp;rthree;' =&gt; '&amp;#x022cc;',
+	  '&amp;rtimes;' =&gt; '&amp;#x022ca;',
+	  '&amp;sdot;' =&gt; '&amp;#x022c5;',
+	  '&amp;sdotb;' =&gt; '&amp;#x022a1;',
+	  '&amp;setmn;' =&gt; '&amp;#x02216;',
+	  '&amp;simplus;' =&gt; '&amp;#x02a24;',
+	  '&amp;smashp;' =&gt; '&amp;#x02a33;',
+	  '&amp;solb;' =&gt; '&amp;#x029c4;',
+	  '&amp;sqcap;' =&gt; '&amp;#x02293;',
+	  '&amp;sqcaps;' =&gt; '&amp;#x02293;&amp;#x0fe00;',
+	  '&amp;sqcup;' =&gt; '&amp;#x02294;',
+	  '&amp;sqcups;' =&gt; '&amp;#x02294;&amp;#x0fe00;',
+	  '&amp;ssetmn;' =&gt; '&amp;#x02216;',
+	  '&amp;sstarf;' =&gt; '&amp;#x022c6;',
+	  '&amp;subdot;' =&gt; '&amp;#x02abd;',
+	  '&amp;sum;' =&gt; '&amp;#x02211;',
+	  '&amp;supdot;' =&gt; '&amp;#x02abe;',
+	  '&amp;timesb;' =&gt; '&amp;#x022a0;',
+	  '&amp;timesbar;' =&gt; '&amp;#x02a31;',
+	  '&amp;timesd;' =&gt; '&amp;#x02a30;',
+	  '&amp;tridot;' =&gt; '&amp;#x025ec;',
+	  '&amp;triminus;' =&gt; '&amp;#x02a3a;',
+	  '&amp;triplus;' =&gt; '&amp;#x02a39;',
+	  '&amp;trisb;' =&gt; '&amp;#x029cd;',
+	  '&amp;tritime;' =&gt; '&amp;#x02a3b;',
+	  '&amp;uplus;' =&gt; '&amp;#x0228e;',
+	  '&amp;veebar;' =&gt; '&amp;#x022bb;',
+	  '&amp;wedbar;' =&gt; '&amp;#x02a5f;',
+	  '&amp;wreath;' =&gt; '&amp;#x02240;',
+	  '&amp;xcap;' =&gt; '&amp;#x022c2;',
+	  '&amp;xcirc;' =&gt; '&amp;#x025ef;',
+	  '&amp;xcup;' =&gt; '&amp;#x022c3;',
+	  '&amp;xdtri;' =&gt; '&amp;#x025bd;',
+	  '&amp;xodot;' =&gt; '&amp;#x02a00;',
+	  '&amp;xoplus;' =&gt; '&amp;#x02a01;',
+	  '&amp;xotime;' =&gt; '&amp;#x02a02;',
+	  '&amp;xsqcup;' =&gt; '&amp;#x02a06;',
+	  '&amp;xuplus;' =&gt; '&amp;#x02a04;',
+	  '&amp;xutri;' =&gt; '&amp;#x025b3;',
+	  '&amp;xvee;' =&gt; '&amp;#x022c1;',
+	  '&amp;xwedge;' =&gt; '&amp;#x022c0;',
+	  '&amp;dlcorn;' =&gt; '&amp;#x0231e;',
+	  '&amp;drcorn;' =&gt; '&amp;#x0231f;',
+	  '&amp;gtlpar;' =&gt; '&amp;#x02995;',
+	  '&amp;langd;' =&gt; '&amp;#x02991;',
+	  '&amp;lbrke;' =&gt; '&amp;#x0298b;',
+	  '&amp;lbrksld;' =&gt; '&amp;#x0298f;',
+	  '&amp;lbrkslu;' =&gt; '&amp;#x0298d;',
+	  '&amp;lceil;' =&gt; '&amp;#x02308;',
+	  '&amp;lfloor;' =&gt; '&amp;#x0230a;',
+	  '&amp;lmoust;' =&gt; '&amp;#x023b0;',
+	  '&amp;lparlt;' =&gt; '&amp;#x02993;',
+	  '&amp;ltrpar;' =&gt; '&amp;#x02996;',
+	  '&amp;rangd;' =&gt; '&amp;#x02992;',
+	  '&amp;rbrke;' =&gt; '&amp;#x0298c;',
+	  '&amp;rbrksld;' =&gt; '&amp;#x0298e;',
+	  '&amp;rbrkslu;' =&gt; '&amp;#x02990;',
+	  '&amp;rceil;' =&gt; '&amp;#x02309;',
+	  '&amp;rfloor;' =&gt; '&amp;#x0230b;',
+	  '&amp;rmoust;' =&gt; '&amp;#x023b1;',
+	  '&amp;rpargt;' =&gt; '&amp;#x02994;',
+	  '&amp;ulcorn;' =&gt; '&amp;#x0231c;',
+	  '&amp;urcorn;' =&gt; '&amp;#x0231d;',
+	  '&amp;gnap;' =&gt; '&amp;#x02a8a;',
+	  '&amp;gne;' =&gt; '&amp;#x02269;',
+	  '&amp;gne;' =&gt; '&amp;#x02a88;',
+	  '&amp;gnsim;' =&gt; '&amp;#x022e7;',
+	  '&amp;gvne;' =&gt; '&amp;#x02269;&amp;#x0fe00;',
+	  '&amp;lnap;' =&gt; '&amp;#x02a89;',
+	  '&amp;lne;' =&gt; '&amp;#x02268;',
+	  '&amp;lne;' =&gt; '&amp;#x02a87;',
+	  '&amp;lnsim;' =&gt; '&amp;#x022e6;',
+	  '&amp;lvne;' =&gt; '&amp;#x02268;&amp;#x0fe00;',
+	  '&amp;nap;' =&gt; '&amp;#x02249;',
+	  '&amp;nape;' =&gt; '&amp;#x02a70;&amp;#x00338;',
+	  '&amp;napid;' =&gt; '&amp;#x0224b;&amp;#x00338;',
+	  '&amp;ncong;' =&gt; '&amp;#x02247;',
+	  '&amp;ncongdot;' =&gt; '&amp;#x02a6d;&amp;#x00338;',
+	  '&amp;nequiv;' =&gt; '&amp;#x02262;',
+	  '&amp;nge;' =&gt; '&amp;#x02267;&amp;#x00338;',
+	  '&amp;nge;' =&gt; '&amp;#x02271;',
+	  '&amp;nges;' =&gt; '&amp;#x02a7e;&amp;#x00338;',
+	  '&amp;ngg;' =&gt; '&amp;#x022d9;&amp;#x00338;',
+	  '&amp;ngsim;' =&gt; '&amp;#x02275;',
+	  '&amp;ngt;' =&gt; '&amp;#x0226b;&amp;#x020d2;',
+	  '&amp;ngt;' =&gt; '&amp;#x0226f;',
+	  '&amp;ngtv;' =&gt; '&amp;#x0226b;&amp;#x00338;',
+	  '&amp;nle;' =&gt; '&amp;#x02266;&amp;#x00338;',
+	  '&amp;nle;' =&gt; '&amp;#x02270;',
+	  '&amp;nles;' =&gt; '&amp;#x02a7d;&amp;#x00338;',
+	  '&amp;nll;' =&gt; '&amp;#x022d8;&amp;#x00338;',
+	  '&amp;nlsim;' =&gt; '&amp;#x02274;',
+	  '&amp;nlt;' =&gt; '&amp;#x0226a;&amp;#x020d2;',
+	  '&amp;nlt;' =&gt; '&amp;#x0226e;',
+	  '&amp;nltri;' =&gt; '&amp;#x022ea;',
+	  '&amp;nltrie;' =&gt; '&amp;#x022ec;',
+	  '&amp;nltv;' =&gt; '&amp;#x0226a;&amp;#x00338;',
+	  '&amp;nmid;' =&gt; '&amp;#x02224;',
+	  '&amp;npar;' =&gt; '&amp;#x02226;',
+	  '&amp;npr;' =&gt; '&amp;#x02280;',
+	  '&amp;nprcue;' =&gt; '&amp;#x022e0;',
+	  '&amp;npre;' =&gt; '&amp;#x02aaf;&amp;#x00338;',
+	  '&amp;nrtri;' =&gt; '&amp;#x022eb;',
+	  '&amp;nrtrie;' =&gt; '&amp;#x022ed;',
+	  '&amp;nsc;' =&gt; '&amp;#x02281;',
+	  '&amp;nsccue;' =&gt; '&amp;#x022e1;',
+	  '&amp;nsce;' =&gt; '&amp;#x02ab0;&amp;#x00338;',
+	  '&amp;nsim;' =&gt; '&amp;#x02241;',
+	  '&amp;nsime;' =&gt; '&amp;#x02244;',
+	  '&amp;nsmid;' =&gt; '&amp;#x02224;',
+	  '&amp;nspar;' =&gt; '&amp;#x02226;',
+	  '&amp;nsqsube;' =&gt; '&amp;#x022e2;',
+	  '&amp;nsqsupe;' =&gt; '&amp;#x022e3;',
+	
+	  '&amp;nsub;' =&gt; '&amp;#x02284;',
+	  '&amp;nsube;' =&gt; '&amp;#x02ac5;&amp;#x00338;',
+	  '&amp;nsube;' =&gt; '&amp;#x02288;',
+	  '&amp;nsup;' =&gt; '&amp;#x02285;',
+	  '&amp;nsupe;' =&gt; '&amp;#x02ac6;&amp;#x00338;',
+	  '&amp;nsupe;' =&gt; '&amp;#x02289;',
+	  '&amp;ntgl;' =&gt; '&amp;#x02279;',
+	  '&amp;ntlg;' =&gt; '&amp;#x02278;',
+	  '&amp;nvap;' =&gt; '&amp;#x0224d;&amp;#x020d2;',
+	  '&amp;nvdash;' =&gt; '&amp;#x022af;',
+	  '&amp;nvdash;' =&gt; '&amp;#x022ae;',
+	  '&amp;nvdash;' =&gt; '&amp;#x022ad;',
+	  '&amp;nvdash;' =&gt; '&amp;#x022ac;',
+	  '&amp;nvge;' =&gt; '&amp;#x02265;&amp;#x020d2;',
+	  '&amp;nvgt;' =&gt; '&amp;#x0003e;&amp;#x020d2;',
+	  '&amp;nvle;' =&gt; '&amp;#x02264;&amp;#x020d2;',
+	  '&amp;nvltrie;' =&gt; '&amp;#x022b4;&amp;#x020d2;',
+	  '&amp;nvrtrie;' =&gt; '&amp;#x022b5;&amp;#x020d2;',
+	  '&amp;nvsim;' =&gt; '&amp;#x0223c;&amp;#x020d2;',
+	  '&amp;parsim;' =&gt; '&amp;#x02af3;',
+	  '&amp;prnap;' =&gt; '&amp;#x02ab9;',
+	  '&amp;prne;' =&gt; '&amp;#x02ab5;',
+	  '&amp;prnsim;' =&gt; '&amp;#x022e8;',
+	  '&amp;rnmid;' =&gt; '&amp;#x02aee;',
+	
+	  '&amp;scnap;' =&gt; '&amp;#x02aba;',
+	  '&amp;scne;' =&gt; '&amp;#x02ab6;',
+	  '&amp;scnsim;' =&gt; '&amp;#x022e9;',
+	  '&amp;simne;' =&gt; '&amp;#x02246;',
+	  '&amp;solbar;' =&gt; '&amp;#x0233f;',
+	  '&amp;subne;' =&gt; '&amp;#x02acb;',
+	  '&amp;subne;' =&gt; '&amp;#x0228a;',
+	  '&amp;supne;' =&gt; '&amp;#x02acc;',
+	  '&amp;supne;' =&gt; '&amp;#x0228b;',
+	  '&amp;vnsub;' =&gt; '&amp;#x02282;&amp;#x020d2;',
+	  '&amp;vnsup;' =&gt; '&amp;#x02283;&amp;#x020d2;',
+	  '&amp;vsubne;' =&gt; '&amp;#x02acb;&amp;#x0fe00;',
+	  '&amp;vsubne;' =&gt; '&amp;#x0228a;&amp;#x0fe00;',
+	  '&amp;vsupne;' =&gt; '&amp;#x02acc;&amp;#x0fe00;',
+	  '&amp;vsupne;' =&gt; '&amp;#x0228b;&amp;#x0fe00;',
+	  '&amp;ang;' =&gt; '&amp;#x02220;',
+	  '&amp;ange;' =&gt; '&amp;#x029a4;',
+	  '&amp;angmsd;' =&gt; '&amp;#x02221;',
+	  '&amp;angmsdaa;' =&gt; '&amp;#x029a8;',
+	  '&amp;angmsdab;' =&gt; '&amp;#x029a9;',
+	  '&amp;angmsdac;' =&gt; '&amp;#x029aa;',
+	  '&amp;angmsdad;' =&gt; '&amp;#x029ab;',
+	  '&amp;angmsdae;' =&gt; '&amp;#x029ac;',
+	  '&amp;angmsdaf;' =&gt; '&amp;#x029ad;',
+	  '&amp;angmsdag;' =&gt; '&amp;#x029ae;',
+	  '&amp;angmsdah;' =&gt; '&amp;#x029af;',
+	  '&amp;angrtvb;' =&gt; '&amp;#x022be;',
+	  '&amp;angrtvbd;' =&gt; '&amp;#x0299d;',
+	  '&amp;bbrk;' =&gt; '&amp;#x023b5;',
+	  '&amp;bbrktbrk;' =&gt; '&amp;#x023b6;',
+	  '&amp;bemptyv;' =&gt; '&amp;#x029b0;',
+	  '&amp;beth;' =&gt; '&amp;#x02136;',
+	  '&amp;boxbox;' =&gt; '&amp;#x029c9;',
+	  '&amp;bprime;' =&gt; '&amp;#x02035;',
+	  '&amp;bsemi;' =&gt; '&amp;#x0204f;',
+	  '&amp;cemptyv;' =&gt; '&amp;#x029b2;',
+	  '&amp;cire;' =&gt; '&amp;#x029c3;',
+	  '&amp;cirscir;' =&gt; '&amp;#x029c2;',
+	  '&amp;comp;' =&gt; '&amp;#x02201;',
+	  '&amp;daleth;' =&gt; '&amp;#x02138;',
+	  '&amp;demptyv;' =&gt; '&amp;#x029b1;',
+	  '&amp;ell;' =&gt; '&amp;#x02113;',
+	  '&amp;empty;' =&gt; '&amp;#x02205;',
+	  '&amp;emptyv;' =&gt; '&amp;#x02205;',
+	  '&amp;gimel;' =&gt; '&amp;#x02137;',
+	  '&amp;iiota;' =&gt; '&amp;#x02129;',
+	  '&amp;image;' =&gt; '&amp;#x02111;',
+	  '&amp;imath;' =&gt; '&amp;#x00131;',
+	  '&amp;jmath;' =&gt; '&amp;#x0006a;',
+	  '&amp;laemptyv;' =&gt; '&amp;#x029b4;',
+	  '&amp;lltri;' =&gt; '&amp;#x025fa;',
+	  '&amp;lrtri;' =&gt; '&amp;#x022bf;',
+	  '&amp;mho;' =&gt; '&amp;#x02127;',
+	  '&amp;nang;' =&gt; '&amp;#x02220;&amp;#x020d2;',
+	  '&amp;nexist;' =&gt; '&amp;#x02204;',
+	  '&amp;os;' =&gt; '&amp;#x024c8;',
+	  '&amp;planck;' =&gt; '&amp;#x0210f;',
+	  '&amp;plankv;' =&gt; '&amp;#x0210f;',
+	  '&amp;raemptyv;' =&gt; '&amp;#x029b3;',
+	  '&amp;range;' =&gt; '&amp;#x029a5;',
+	  '&amp;real;' =&gt; '&amp;#x0211c;',
+	  '&amp;tbrk;' =&gt; '&amp;#x023b4;',
+	  '&amp;trpezium;' =&gt; '&amp;#x0fffd;',
+	  '&amp;ultri;' =&gt; '&amp;#x025f8;',
+	  '&amp;urtri;' =&gt; '&amp;#x025f9;',
+	  '&amp;vzigzag;' =&gt; '&amp;#x0299a;',
+	  '&amp;weierp;' =&gt; '&amp;#x02118;',
+	  '&amp;ape;' =&gt; '&amp;#x02a70;',
+	  '&amp;ape;' =&gt; '&amp;#x0224a;',
+	  '&amp;apid;' =&gt; '&amp;#x0224b;',
+	  '&amp;asymp;' =&gt; '&amp;#x02248;',
+	  '&amp;barv;' =&gt; '&amp;#x02ae7;',
+	  '&amp;bcong;' =&gt; '&amp;#x0224c;',
+	  '&amp;bepsi;' =&gt; '&amp;#x003f6;',
+	  '&amp;bowtie;' =&gt; '&amp;#x022c8;',
+	  '&amp;bsim;' =&gt; '&amp;#x0223d;',
+	  '&amp;bsime;' =&gt; '&amp;#x022cd;',
+	  '&amp;bsolhsub;' =&gt; '&amp;#x0005c;&amp;#x02282;',
+	  '&amp;bump;' =&gt; '&amp;#x0224e;',
+	  '&amp;bumpe;' =&gt; '&amp;#x02aae;',
+	  '&amp;bumpe;' =&gt; '&amp;#x0224f;',
+	  '&amp;cire;' =&gt; '&amp;#x02257;',
+	  '&amp;colon;' =&gt; '&amp;#x02237;',
+	  '&amp;colone;' =&gt; '&amp;#x02a74;',
+	  '&amp;colone;' =&gt; '&amp;#x02254;',
+	  '&amp;congdot;' =&gt; '&amp;#x02a6d;',
+	  '&amp;csub;' =&gt; '&amp;#x02acf;',
+	  '&amp;csube;' =&gt; '&amp;#x02ad1;',
+	  '&amp;csup;' =&gt; '&amp;#x02ad0;',
+	  '&amp;csupe;' =&gt; '&amp;#x02ad2;',
+	  '&amp;cuepr;' =&gt; '&amp;#x022de;',
+	  '&amp;cuesc;' =&gt; '&amp;#x022df;',
+	  '&amp;dashv;' =&gt; '&amp;#x02ae4;',
+	  '&amp;dashv;' =&gt; '&amp;#x022a3;',
+	  '&amp;easter;' =&gt; '&amp;#x02a6e;',
+	  '&amp;ecir;' =&gt; '&amp;#x02256;',
+	  '&amp;ecolon;' =&gt; '&amp;#x02255;',
+	  '&amp;eddot;' =&gt; '&amp;#x02a77;',
+	  '&amp;edot;' =&gt; '&amp;#x02251;',
+	  '&amp;efdot;' =&gt; '&amp;#x02252;',
+	  '&amp;eg;' =&gt; '&amp;#x02a9a;',
+	  '&amp;egs;' =&gt; '&amp;#x02a96;',
+	  '&amp;egsdot;' =&gt; '&amp;#x02a98;',
+	  '&amp;el;' =&gt; '&amp;#x02a99;',
+	  '&amp;els;' =&gt; '&amp;#x02a95;',
+	  '&amp;elsdot;' =&gt; '&amp;#x02a97;',
+	  '&amp;equest;' =&gt; '&amp;#x0225f;',
+	  '&amp;equivdd;' =&gt; '&amp;#x02a78;',
+	  '&amp;erdot;' =&gt; '&amp;#x02253;',
+	  '&amp;esdot;' =&gt; '&amp;#x02250;',
+	  '&amp;esim;' =&gt; '&amp;#x02a73;',
+	  '&amp;esim;' =&gt; '&amp;#x02242;',
+	  '&amp;fork;' =&gt; '&amp;#x022d4;',
+	  '&amp;forkv;' =&gt; '&amp;#x02ad9;',
+	  '&amp;frown;' =&gt; '&amp;#x02322;',
+	  '&amp;gap;' =&gt; '&amp;#x02a86;',
+	  '&amp;ge;' =&gt; '&amp;#x02267;',
+	  '&amp;gel;' =&gt; '&amp;#x02a8c;',
+	  '&amp;gel;' =&gt; '&amp;#x022db;',
+	  '&amp;ges;' =&gt; '&amp;#x02a7e;',
+	  '&amp;gescc;' =&gt; '&amp;#x02aa9;',
+	  '&amp;gesdot;' =&gt; '&amp;#x02a80;',
+	  '&amp;gesdoto;' =&gt; '&amp;#x02a82;',
+	  '&amp;gesdotol;' =&gt; '&amp;#x02a84;',
+	  '&amp;gesl;' =&gt; '&amp;#x022db;&amp;#x0fe00;',
+	  '&amp;gesles;' =&gt; '&amp;#x02a94;',
+	  '&amp;gg;' =&gt; '&amp;#x022d9;',
+	  '&amp;gl;' =&gt; '&amp;#x02277;',
+	  '&amp;gla;' =&gt; '&amp;#x02aa5;',
+	  '&amp;gle;' =&gt; '&amp;#x02a92;',
+	  '&amp;glj;' =&gt; '&amp;#x02aa4;',
+	  '&amp;gsim;' =&gt; '&amp;#x02273;',
+	  '&amp;gsime;' =&gt; '&amp;#x02a8e;',
+	  '&amp;gsiml;' =&gt; '&amp;#x02a90;',
+	  '&amp;gt;' =&gt; '&amp;#x0226b;',
+	  '&amp;gtcc;' =&gt; '&amp;#x02aa7;',
+	  '&amp;gtcir;' =&gt; '&amp;#x02a7a;',
+	  '&amp;gtdot;' =&gt; '&amp;#x022d7;',
+	  '&amp;gtquest;' =&gt; '&amp;#x02a7c;',
+	  '&amp;gtrarr;' =&gt; '&amp;#x02978;',
+	  '&amp;homtht;' =&gt; '&amp;#x0223b;',
+	  '&amp;lap;' =&gt; '&amp;#x02a85;',
+	  '&amp;lat;' =&gt; '&amp;#x02aab;',
+	  '&amp;late;' =&gt; '&amp;#x02aad;',
+	  '&amp;lates;' =&gt; '&amp;#x02aad;&amp;#x0fe00;',
+	  '&amp;le;' =&gt; '&amp;#x02266;',
+	  '&amp;leg;' =&gt; '&amp;#x02a8b;',
+	  '&amp;leg;' =&gt; '&amp;#x022da;',
+	  '&amp;les;' =&gt; '&amp;#x02a7d;',
+	  '&amp;lescc;' =&gt; '&amp;#x02aa8;',
+	  '&amp;lesdot;' =&gt; '&amp;#x02a7f;',
+	  '&amp;lesdoto;' =&gt; '&amp;#x02a81;',
+	  '&amp;lesdotor;' =&gt; '&amp;#x02a83;',
+	  '&amp;lesg;' =&gt; '&amp;#x022da;&amp;#x0fe00;',
+	  '&amp;lesges;' =&gt; '&amp;#x02a93;',
+	  '&amp;lg;' =&gt; '&amp;#x02276;',
+	  '&amp;lge;' =&gt; '&amp;#x02a91;',
+	  '&amp;ll;' =&gt; '&amp;#x022d8;',
+	  '&amp;lsim;' =&gt; '&amp;#x02272;',
+	  '&amp;lsime;' =&gt; '&amp;#x02a8d;',
+	  '&amp;lsimg;' =&gt; '&amp;#x02a8f;',
+	  '&amp;lt;' =&gt; '&amp;#x0226a;',
+	  '&amp;ltcc;' =&gt; '&amp;#x02aa6;',
+	  '&amp;ltcir;' =&gt; '&amp;#x02a79;',
+	  '&amp;ltdot;' =&gt; '&amp;#x022d6;',
+	  '&amp;ltlarr;' =&gt; '&amp;#x02976;',
+	  '&amp;ltquest;' =&gt; '&amp;#x02a7b;',
+	  '&amp;ltrie;' =&gt; '&amp;#x022b4;',
+	  '&amp;mcomma;' =&gt; '&amp;#x02a29;',
+	  '&amp;mddot;' =&gt; '&amp;#x0223a;',
+	  '&amp;mid;' =&gt; '&amp;#x02223;',
+	  '&amp;mlcp;' =&gt; '&amp;#x02adb;',
+	  '&amp;models;' =&gt; '&amp;#x022a7;',
+	  '&amp;mstpos;' =&gt; '&amp;#x0223e;',
+	  '&amp;pr;' =&gt; '&amp;#x02abb;',
+	  '&amp;pr;' =&gt; '&amp;#x0227a;',
+	  '&amp;prap;' =&gt; '&amp;#x02ab7;',
+	  '&amp;prcue;' =&gt; '&amp;#x0227c;',
+	  '&amp;pre;' =&gt; '&amp;#x02ab3;',
+	  '&amp;pre;' =&gt; '&amp;#x02aaf;',
+	  '&amp;prsim;' =&gt; '&amp;#x0227e;',
+	  '&amp;prurel;' =&gt; '&amp;#x022b0;',
+	  '&amp;ratio;' =&gt; '&amp;#x02236;',
+	  '&amp;rtrie;' =&gt; '&amp;#x022b5;',
+	  '&amp;rtriltri;' =&gt; '&amp;#x029ce;',
+	  '&amp;sc;' =&gt; '&amp;#x02abc;',
+	  '&amp;sc;' =&gt; '&amp;#x0227b;',
+	  '&amp;scap;' =&gt; '&amp;#x02ab8;',
+	  '&amp;sccue;' =&gt; '&amp;#x0227d;',
+	  '&amp;sce;' =&gt; '&amp;#x02ab4;',
+	  '&amp;sce;' =&gt; '&amp;#x02ab0;',
+	  '&amp;scsim;' =&gt; '&amp;#x0227f;',
+	  '&amp;sdote;' =&gt; '&amp;#x02a66;',
+	  '&amp;sfrown;' =&gt; '&amp;#x02322;',
+	  '&amp;simg;' =&gt; '&amp;#x02a9e;',
+	  '&amp;simge;' =&gt; '&amp;#x02aa0;',
+	  '&amp;siml;' =&gt; '&amp;#x02a9d;',
+	  '&amp;simle;' =&gt; '&amp;#x02a9f;',
+	  '&amp;smid;' =&gt; '&amp;#x02223;',
+	  '&amp;smile;' =&gt; '&amp;#x02323;',
+	  '&amp;smt;' =&gt; '&amp;#x02aaa;',
+	  '&amp;smte;' =&gt; '&amp;#x02aac;',
+	  '&amp;smtes;' =&gt; '&amp;#x02aac;&amp;#x0fe00;',
+	  '&amp;spar;' =&gt; '&amp;#x02225;',
+	  '&amp;sqsub;' =&gt; '&amp;#x0228f;',
+	  '&amp;sqsube;' =&gt; '&amp;#x02291;',
+	  '&amp;sqsup;' =&gt; '&amp;#x02290;',
+	  '&amp;sqsupe;' =&gt; '&amp;#x02292;',
+	  '&amp;ssmile;' =&gt; '&amp;#x02323;',
+	  '&amp;sub;' =&gt; '&amp;#x022d0;',
+	  '&amp;sube;' =&gt; '&amp;#x02ac5;',
+	  '&amp;subedot;' =&gt; '&amp;#x02ac3;',
+	  '&amp;submult;' =&gt; '&amp;#x02ac1;',
+	  '&amp;subplus;' =&gt; '&amp;#x02abf;',
+	  '&amp;subrarr;' =&gt; '&amp;#x02979;',
+	  '&amp;subsim;' =&gt; '&amp;#x02ac7;',
+	  '&amp;subsub;' =&gt; '&amp;#x02ad5;',
+	  '&amp;subsup;' =&gt; '&amp;#x02ad3;',
+	  '&amp;sup;' =&gt; '&amp;#x022d1;',
+	  '&amp;supdsub;' =&gt; '&amp;#x02ad8;',
+	  '&amp;supe;' =&gt; '&amp;#x02ac6;',
+	  '&amp;supedot;' =&gt; '&amp;#x02ac4;',
+	  '&amp;suphsol;' =&gt; '&amp;#x02283;&amp;#x0002f;',
+	  '&amp;suphsub;' =&gt; '&amp;#x02ad7;',
+	  '&amp;suplarr;' =&gt; '&amp;#x0297b;',
+	  '&amp;supmult;' =&gt; '&amp;#x02ac2;',
+	  '&amp;supplus;' =&gt; '&amp;#x02ac0;',
+	  '&amp;supsim;' =&gt; '&amp;#x02ac8;',
+	  '&amp;supsub;' =&gt; '&amp;#x02ad4;',
+	  '&amp;supsup;' =&gt; '&amp;#x02ad6;',
+	  '&amp;thkap;' =&gt; '&amp;#x02248;',
+	  '&amp;thksim;' =&gt; '&amp;#x0223c;',
+	  '&amp;topfork;' =&gt; '&amp;#x02ada;',
+	  '&amp;trie;' =&gt; '&amp;#x0225c;',
+	  '&amp;twixt;' =&gt; '&amp;#x0226c;',
+	  '&amp;vbar;' =&gt; '&amp;#x02aeb;',
+	  '&amp;vbar;' =&gt; '&amp;#x02ae8;',
+	  '&amp;vbarv;' =&gt; '&amp;#x02ae9;',
+	  '&amp;vdash;' =&gt; '&amp;#x022ab;',
+	  '&amp;vdash;' =&gt; '&amp;#x022a9;',
+	  '&amp;vdash;' =&gt; '&amp;#x022a8;',
+	  '&amp;vdash;' =&gt; '&amp;#x022a2;',
+	  '&amp;vdashl;' =&gt; '&amp;#x02ae6;',
+	  '&amp;vltri;' =&gt; '&amp;#x022b2;',
+	  '&amp;vprop;' =&gt; '&amp;#x0221d;',
+	  '&amp;vrtri;' =&gt; '&amp;#x022b3;',
+	  '&amp;vvdash;' =&gt; '&amp;#x022aa;',
+	  '&amp;alpha;' =&gt; '&amp;#x003b1;',
+	  '&amp;beta;' =&gt; '&amp;#x003b2;',
+	  '&amp;chi;' =&gt; '&amp;#x003c7;',
+	  '&amp;delta;' =&gt; '&amp;#x00394;',
+	  '&amp;delta;' =&gt; '&amp;#x003b4;',
+	  '&amp;epsi;' =&gt; '&amp;#x003f5;',
+	  '&amp;epsiv;' =&gt; '&amp;#x003b5;',
+	  '&amp;eta;' =&gt; '&amp;#x003b7;',
+	  '&amp;gamma;' =&gt; '&amp;#x00393;',
+	  '&amp;gamma;' =&gt; '&amp;#x003b3;',
+	  '&amp;gammad;' =&gt; '&amp;#x003dc;',
+	  '&amp;gammad;' =&gt; '&amp;#x003dd;',
+	  '&amp;iota;' =&gt; '&amp;#x003b9;',
+	  '&amp;kappa;' =&gt; '&amp;#x003ba;',
+	  '&amp;kappav;' =&gt; '&amp;#x003f0;',
+	  '&amp;lambda;' =&gt; '&amp;#x0039b;',
+	  '&amp;lambda;' =&gt; '&amp;#x003bb;',
+	  '&amp;mu;' =&gt; '&amp;#x003bc;',
+	  '&amp;nu;' =&gt; '&amp;#x003bd;',
+	  '&amp;omega;' =&gt; '&amp;#x003a9;',
+	  '&amp;omega;' =&gt; '&amp;#x003c9;',
+	  '&amp;phi;' =&gt; '&amp;#x003a6;',
+	  '&amp;phi;' =&gt; '&amp;#x003d5;',
+	  '&amp;phiv;' =&gt; '&amp;#x003c6;',
+	  '&amp;pi;' =&gt; '&amp;#x003a0;',
+	  '&amp;pi;' =&gt; '&amp;#x003c0;',
+	  '&amp;piv;' =&gt; '&amp;#x003d6;',
+	  '&amp;psi;' =&gt; '&amp;#x003a8;',
+	  '&amp;psi;' =&gt; '&amp;#x003c8;',
+	  '&amp;rho;' =&gt; '&amp;#x003c1;',
+	  '&amp;rhov;' =&gt; '&amp;#x003f1;',
+	  '&amp;sigma;' =&gt; '&amp;#x003a3;',
+	  '&amp;sigma;' =&gt; '&amp;#x003c3;',
+	  '&amp;sigmav;' =&gt; '&amp;#x003c2;',
+	  '&amp;tau;' =&gt; '&amp;#x003c4;',
+	  '&amp;theta;' =&gt; '&amp;#x00398;',
+	  '&amp;theta;' =&gt; '&amp;#x003b8;',
+	  '&amp;thetav;' =&gt; '&amp;#x003d1;',
+	  '&amp;upsi;' =&gt; '&amp;#x003d2;',
+	  '&amp;upsi;' =&gt; '&amp;#x003c5;',
+	  '&amp;xi;' =&gt; '&amp;#x0039e;',
+	  '&amp;xi;' =&gt; '&amp;#x003be;',
+	  '&amp;zeta;' =&gt; '&amp;#x003b6;',
+	  '&amp;afr;' =&gt; '&amp;#x1d504;',
+	  '&amp;afr;' =&gt; '&amp;#x1d51e;',
+	  '&amp;bfr;' =&gt; '&amp;#x1d505;',
+	  '&amp;bfr;' =&gt; '&amp;#x1d51f;',
+	  '&amp;cfr;' =&gt; '&amp;#x0212d;',
+	  '&amp;cfr;' =&gt; '&amp;#x1d520;',
+	  '&amp;dfr;' =&gt; '&amp;#x1d507;',
+	  '&amp;dfr;' =&gt; '&amp;#x1d521;',
+	  '&amp;efr;' =&gt; '&amp;#x1d508;',
+	  '&amp;efr;' =&gt; '&amp;#x1d522;',
+	  '&amp;ffr;' =&gt; '&amp;#x1d509;',
+	  '&amp;ffr;' =&gt; '&amp;#x1d523;',
+	  '&amp;gfr;' =&gt; '&amp;#x1d50a;',
+	  '&amp;gfr;' =&gt; '&amp;#x1d524;',
+	  '&amp;hfr;' =&gt; '&amp;#x0210c;',
+	  '&amp;hfr;' =&gt; '&amp;#x1d525;',
+	  '&amp;ifr;' =&gt; '&amp;#x02111;',
+	  '&amp;ifr;' =&gt; '&amp;#x1d526;',
+	  '&amp;jfr;' =&gt; '&amp;#x1d50d;',
+	  '&amp;jfr;' =&gt; '&amp;#x1d527;',
+	  '&amp;kfr;' =&gt; '&amp;#x1d50e;',
+	  '&amp;kfr;' =&gt; '&amp;#x1d528;',
+	  '&amp;lfr;' =&gt; '&amp;#x1d50f;',
+	  '&amp;lfr;' =&gt; '&amp;#x1d529;',
+	  '&amp;mfr;' =&gt; '&amp;#x1d510;',
+	  '&amp;mfr;' =&gt; '&amp;#x1d52a;',
+	  '&amp;nfr;' =&gt; '&amp;#x1d511;',
+	  '&amp;nfr;' =&gt; '&amp;#x1d52b;',
+	  '&amp;ofr;' =&gt; '&amp;#x1d512;',
+	  '&amp;ofr;' =&gt; '&amp;#x1d52c;',
+	  '&amp;pfr;' =&gt; '&amp;#x1d513;',
+	  '&amp;pfr;' =&gt; '&amp;#x1d52d;',
+	  '&amp;qfr;' =&gt; '&amp;#x1d514;',
+	  '&amp;qfr;' =&gt; '&amp;#x1d52e;',
+	  '&amp;rfr;' =&gt; '&amp;#x0211c;',
+	  '&amp;rfr;' =&gt; '&amp;#x1d52f;',
+	  '&amp;sfr;' =&gt; '&amp;#x1d516;',
+	  '&amp;sfr;' =&gt; '&amp;#x1d530;',
+	  '&amp;tfr;' =&gt; '&amp;#x1d517;',
+	  '&amp;tfr;' =&gt; '&amp;#x1d531;',
+	  '&amp;ufr;' =&gt; '&amp;#x1d518;',
+	  '&amp;ufr;' =&gt; '&amp;#x1d532;',
+	  '&amp;vfr;' =&gt; '&amp;#x1d519;',
+	  '&amp;vfr;' =&gt; '&amp;#x1d533;',
+	  '&amp;wfr;' =&gt; '&amp;#x1d51a;',
+	  '&amp;wfr;' =&gt; '&amp;#x1d534;',
+	  '&amp;xfr;' =&gt; '&amp;#x1d51b;',
+	  '&amp;xfr;' =&gt; '&amp;#x1d535;',
+	  '&amp;yfr;' =&gt; '&amp;#x1d51c;',
+	  '&amp;yfr;' =&gt; '&amp;#x1d536;',
+	  '&amp;zfr;' =&gt; '&amp;#x02128;',
+	  '&amp;zfr;' =&gt; '&amp;#x1d537;',
+	  '&amp;aopf;' =&gt; '&amp;#x1d538;',
+	  '&amp;bopf;' =&gt; '&amp;#x1d539;',
+	  '&amp;copf;' =&gt; '&amp;#x02102;',
+	  '&amp;dopf;' =&gt; '&amp;#x1d53b;',
+	  '&amp;eopf;' =&gt; '&amp;#x1d53c;',
+	  '&amp;fopf;' =&gt; '&amp;#x1d53d;',
+	  '&amp;gopf;' =&gt; '&amp;#x1d53e;',
+	  '&amp;hopf;' =&gt; '&amp;#x0210d;',
+	  '&amp;iopf;' =&gt; '&amp;#x1d540;',
+	  '&amp;jopf;' =&gt; '&amp;#x1d541;',
+	  '&amp;kopf;' =&gt; '&amp;#x1d542;',
+	  '&amp;lopf;' =&gt; '&amp;#x1d543;',
+	  '&amp;mopf;' =&gt; '&amp;#x1d544;',
+	  '&amp;nopf;' =&gt; '&amp;#x02115;',
+	  '&amp;oopf;' =&gt; '&amp;#x1d546;',
+	  '&amp;popf;' =&gt; '&amp;#x02119;',
+	  '&amp;qopf;' =&gt; '&amp;#x0211a;',
+	  '&amp;ropf;' =&gt; '&amp;#x0211d;',
+	  '&amp;sopf;' =&gt; '&amp;#x1d54a;',
+	  '&amp;topf;' =&gt; '&amp;#x1d54b;',
+	  '&amp;uopf;' =&gt; '&amp;#x1d54c;',
+	  '&amp;vopf;' =&gt; '&amp;#x1d54d;',
+	  '&amp;wopf;' =&gt; '&amp;#x1d54e;',
+	  '&amp;xopf;' =&gt; '&amp;#x1d54f;',
+	  '&amp;yopf;' =&gt; '&amp;#x1d550;',
+	  '&amp;zopf;' =&gt; '&amp;#x02124;',
+	  '&amp;ascr;' =&gt; '&amp;#x1d49c;',
+	  '&amp;ascr;' =&gt; '&amp;#x1d4b6;',
+	  '&amp;bscr;' =&gt; '&amp;#x0212c;',
+	  '&amp;bscr;' =&gt; '&amp;#x1d4b7;',
+	  '&amp;cscr;' =&gt; '&amp;#x1d49e;',
+	  '&amp;cscr;' =&gt; '&amp;#x1d4b8;',
+	  '&amp;dscr;' =&gt; '&amp;#x1d49f;',
+	  '&amp;dscr;' =&gt; '&amp;#x1d4b9;',
+	  '&amp;escr;' =&gt; '&amp;#x02130;',
+	  '&amp;escr;' =&gt; '&amp;#x0212f;',
+	  '&amp;fscr;' =&gt; '&amp;#x02131;',
+	  '&amp;fscr;' =&gt; '&amp;#x1d4bb;',
+	  '&amp;gscr;' =&gt; '&amp;#x1d4a2;',
+	  '&amp;gscr;' =&gt; '&amp;#x0210a;',
+	  '&amp;hscr;' =&gt; '&amp;#x0210b;',
+	  '&amp;hscr;' =&gt; '&amp;#x1d4bd;',
+	  '&amp;iscr;' =&gt; '&amp;#x02110;',
+	  '&amp;iscr;' =&gt; '&amp;#x1d4be;',
+	  '&amp;jscr;' =&gt; '&amp;#x1d4a5;',
+	  '&amp;jscr;' =&gt; '&amp;#x1d4bf;',
+	  '&amp;kscr;' =&gt; '&amp;#x1d4a6;',
+	  '&amp;kscr;' =&gt; '&amp;#x1d4c0;',
+	  '&amp;lscr;' =&gt; '&amp;#x02112;',
+	  '&amp;lscr;' =&gt; '&amp;#x1d4c1;',
+	  '&amp;mscr;' =&gt; '&amp;#x02133;',
+	  '&amp;mscr;' =&gt; '&amp;#x1d4c2;',
+	  '&amp;nscr;' =&gt; '&amp;#x1d4a9;',
+	  '&amp;nscr;' =&gt; '&amp;#x1d4c3;',
+	  '&amp;oscr;' =&gt; '&amp;#x1d4aa;',
+	  '&amp;oscr;' =&gt; '&amp;#x02134;',
+	  '&amp;pscr;' =&gt; '&amp;#x1d4ab;',
+	  '&amp;pscr;' =&gt; '&amp;#x1d4c5;',
+	  '&amp;qscr;' =&gt; '&amp;#x1d4ac;',
+	  '&amp;qscr;' =&gt; '&amp;#x1d4c6;',
+	  '&amp;rscr;' =&gt; '&amp;#x0211b;',
+	  '&amp;rscr;' =&gt; '&amp;#x1d4c7;',
+	
+	  '&amp;sscr;' =&gt; '&amp;#x1d4ae;',
+	  '&amp;sscr;' =&gt; '&amp;#x1d4c8;',
+	  '&amp;tscr;' =&gt; '&amp;#x1d4af;',
+	  '&amp;tscr;' =&gt; '&amp;#x1d4c9;',
+	  '&amp;uscr;' =&gt; '&amp;#x1d4b0;',
+	  '&amp;uscr;' =&gt; '&amp;#x1d4ca;',
+	  '&amp;vscr;' =&gt; '&amp;#x1d4b1;',
+	  '&amp;vscr;' =&gt; '&amp;#x1d4cb;',
+	  '&amp;wscr;' =&gt; '&amp;#x1d4b2;',
+	  '&amp;wscr;' =&gt; '&amp;#x1d4cc;',
+	  '&amp;xscr;' =&gt; '&amp;#x1d4b3;',
+	  '&amp;xscr;' =&gt; '&amp;#x1d4cd;',
+	  '&amp;yscr;' =&gt; '&amp;#x1d4b4;',
+	  '&amp;yscr;' =&gt; '&amp;#x1d4ce;',
+	  '&amp;zscr;' =&gt; '&amp;#x1d4b5;',
+	  '&amp;zscr;' =&gt; '&amp;#x1d4cf;',
+	  '&amp;acd;' =&gt; '&amp;#x0223f;',
+	  '&amp;aleph;' =&gt; '&amp;#x02135;',
+	  '&amp;and;' =&gt; '&amp;#x02a53;',
+	  '&amp;and;' =&gt; '&amp;#x02227;',
+	  '&amp;andand;' =&gt; '&amp;#x02a55;',
+	  '&amp;andd;' =&gt; '&amp;#x02a5c;',
+	  '&amp;andslope;' =&gt; '&amp;#x02a58;',
+	  '&amp;andv;' =&gt; '&amp;#x02a5a;',
+	  '&amp;angrt;' =&gt; '&amp;#x0221f;',
+	  '&amp;angsph;' =&gt; '&amp;#x02222;',
+	  '&amp;angst;' =&gt; '&amp;#x0212b;',
+	  '&amp;ap;' =&gt; '&amp;#x02248;',
+	  '&amp;apacir;' =&gt; '&amp;#x02a6f;',
+	  '&amp;awconint;' =&gt; '&amp;#x02233;',
+	  '&amp;awint;' =&gt; '&amp;#x02a11;',
+	  '&amp;becaus;' =&gt; '&amp;#x02235;',
+	  '&amp;bernou;' =&gt; '&amp;#x0212c;',
+	  '&amp;bne;' =&gt; '&amp;#x0003d;&amp;#x020e5;',
+	  '&amp;bnequiv;' =&gt; '&amp;#x02261;&amp;#x020e5;',
+	  '&amp;bnot;' =&gt; '&amp;#x02aed;',
+	  '&amp;bnot;' =&gt; '&amp;#x02310;',
+	  '&amp;bottom;' =&gt; '&amp;#x022a5;',
+	  '&amp;cap;' =&gt; '&amp;#x02229;',
+	  '&amp;cconint;' =&gt; '&amp;#x02230;',
+	  '&amp;cirfnint;' =&gt; '&amp;#x02a10;',
+	  '&amp;compfn;' =&gt; '&amp;#x02218;',
+	  '&amp;cong;' =&gt; '&amp;#x02245;',
+	  '&amp;conint;' =&gt; '&amp;#x0222f;',
+	  '&amp;conint;' =&gt; '&amp;#x0222e;',
+	  '&amp;ctdot;' =&gt; '&amp;#x022ef;',
+	  '&amp;cup;' =&gt; '&amp;#x0222a;',
+	  '&amp;cwconint;' =&gt; '&amp;#x02232;',
+	  '&amp;cwint;' =&gt; '&amp;#x02231;',
+	  '&amp;cylcty;' =&gt; '&amp;#x0232d;',
+	  '&amp;disin;' =&gt; '&amp;#x022f2;',
+	  '&amp;dot;' =&gt; '&amp;#x000a8;',
+	  '&amp;dotdot;' =&gt; '&amp;#x020dc;',
+	  '&amp;dsol;' =&gt; '&amp;#x029f6;',
+	  '&amp;dtdot;' =&gt; '&amp;#x022f1;',
+	  '&amp;dwangle;' =&gt; '&amp;#x029a6;',
+	  '&amp;elinters;' =&gt; '&amp;#x0fffd;',
+	  '&amp;epar;' =&gt; '&amp;#x022d5;',
+	  '&amp;eparsl;' =&gt; '&amp;#x029e3;',
+	  '&amp;equiv;' =&gt; '&amp;#x02261;',
+	  '&amp;eqvparsl;' =&gt; '&amp;#x029e5;',
+	  '&amp;exist;' =&gt; '&amp;#x02203;',
+	  '&amp;fltns;' =&gt; '&amp;#x025b1;',
+	  '&amp;fnof;' =&gt; '&amp;#x00192;',
+	  '&amp;forall;' =&gt; '&amp;#x02200;',
+	  '&amp;fpartint;' =&gt; '&amp;#x02a0d;',
+	  '&amp;ge;' =&gt; '&amp;#x02265;',
+	  '&amp;hamilt;' =&gt; '&amp;#x0210b;',
+	  '&amp;iff;' =&gt; '&amp;#x021d4;',
+	  '&amp;iinfin;' =&gt; '&amp;#x029dc;',
+	  '&amp;imped;' =&gt; '&amp;#x001b5;',
+	  '&amp;infin;' =&gt; '&amp;#x0221e;',
+	  '&amp;infintie;' =&gt; '&amp;#x029dd;',
+	  '&amp;int;' =&gt; '&amp;#x0222c;',
+	  '&amp;int;' =&gt; '&amp;#x0222b;',
+	  '&amp;intlarhk;' =&gt; '&amp;#x02a17;',
+	  '&amp;isin;' =&gt; '&amp;#x02208;',
+	  '&amp;isindot;' =&gt; '&amp;#x022f5;',
+	  '&amp;isine;' =&gt; '&amp;#x022f9;',
+	  '&amp;isins;' =&gt; '&amp;#x022f4;',
+	  '&amp;isinsv;' =&gt; '&amp;#x022f3;',
+	  '&amp;isinv;' =&gt; '&amp;#x02208;',
+	  '&amp;lagran;' =&gt; '&amp;#x02112;',
+	  '&amp;lang;' =&gt; '&amp;#x0300a;',
+	  '&amp;lang;' =&gt; '&amp;#x02329;',
+	  '&amp;larr;' =&gt; '&amp;#x021d0;',
+	  '&amp;lbbrk;' =&gt; '&amp;#x03014;',
+	  '&amp;le;' =&gt; '&amp;#x02264;',
+	  '&amp;loang;' =&gt; '&amp;#x03018;',
+	  '&amp;lobrk;' =&gt; '&amp;#x0301a;',
+	  '&amp;lopar;' =&gt; '&amp;#x02985;',
+	  '&amp;lowast;' =&gt; '&amp;#x02217;',
+	  '&amp;minus;' =&gt; '&amp;#x02212;',
+	  '&amp;mnplus;' =&gt; '&amp;#x02213;',
+	  '&amp;nabla;' =&gt; '&amp;#x02207;',
+	  '&amp;ne;' =&gt; '&amp;#x02260;',
+	  '&amp;nedot;' =&gt; '&amp;#x02250;&amp;#x00338;',
+	  '&amp;nhpar;' =&gt; '&amp;#x02af2;',
+	  '&amp;ni;' =&gt; '&amp;#x0220b;',
+	  '&amp;nis;' =&gt; '&amp;#x022fc;',
+	  '&amp;nisd;' =&gt; '&amp;#x022fa;',
+	  '&amp;niv;' =&gt; '&amp;#x0220b;',
+	  '&amp;not;' =&gt; '&amp;#x02aec;',
+	  '&amp;notin;' =&gt; '&amp;#x02209;',
+	  '&amp;notindot;' =&gt; '&amp;#x022f5;&amp;#x00338;',
+	  '&amp;notine;' =&gt; '&amp;#x022f9;&amp;#x00338;',
+	  '&amp;notinva;' =&gt; '&amp;#x02209;',
+	  '&amp;notinvb;' =&gt; '&amp;#x022f7;',
+	  '&amp;notinvc;' =&gt; '&amp;#x022f6;',
+	  '&amp;notni;' =&gt; '&amp;#x0220c;',
+	  '&amp;notniva;' =&gt; '&amp;#x0220c;',
+	  '&amp;notnivb;' =&gt; '&amp;#x022fe;',
+	  '&amp;notnivc;' =&gt; '&amp;#x022fd;',
+	  '&amp;nparsl;' =&gt; '&amp;#x02afd;&amp;#x020e5;',
+	  '&amp;npart;' =&gt; '&amp;#x02202;&amp;#x00338;',
+	  '&amp;npolint;' =&gt; '&amp;#x02a14;',
+	  '&amp;nvinfin;' =&gt; '&amp;#x029de;',
+	  '&amp;olcross;' =&gt; '&amp;#x029bb;',
+	  '&amp;or;' =&gt; '&amp;#x02a54;',
+	  '&amp;or;' =&gt; '&amp;#x02228;',
+	  '&amp;ord;' =&gt; '&amp;#x02a5d;',
+	  '&amp;order;' =&gt; '&amp;#x02134;',
+	  '&amp;oror;' =&gt; '&amp;#x02a56;',
+	  '&amp;orslope;' =&gt; '&amp;#x02a57;',
+	  '&amp;orv;' =&gt; '&amp;#x02a5b;',
+	  '&amp;par;' =&gt; '&amp;#x02225;',
+	  '&amp;parsl;' =&gt; '&amp;#x02afd;',
+	  '&amp;part;' =&gt; '&amp;#x02202;',
+	  '&amp;permil;' =&gt; '&amp;#x02030;',
+	  '&amp;perp;' =&gt; '&amp;#x022a5;',
+	  '&amp;pertenk;' =&gt; '&amp;#x02031;',
+	  '&amp;phmmat;' =&gt; '&amp;#x02133;',
+	  '&amp;pointint;' =&gt; '&amp;#x02a15;',
+	  '&amp;prime;' =&gt; '&amp;#x02033;',
+	  '&amp;prime;' =&gt; '&amp;#x02032;',
+	  '&amp;profalar;' =&gt; '&amp;#x0232e;',
+	  '&amp;profline;' =&gt; '&amp;#x02312;',
+	  '&amp;profsurf;' =&gt; '&amp;#x02313;',
+	  '&amp;prop;' =&gt; '&amp;#x0221d;',
+	  '&amp;qint;' =&gt; '&amp;#x02a0c;',
+	  '&amp;qprime;' =&gt; '&amp;#x02057;',
+	  '&amp;quatint;' =&gt; '&amp;#x02a16;',
+	  '&amp;radic;' =&gt; '&amp;#x0221a;',
+	  '&amp;rang;' =&gt; '&amp;#x0300b;',
+	  '&amp;rang;' =&gt; '&amp;#x0232a;',
+	  '&amp;rarr;' =&gt; '&amp;#x021d2;',
+	  '&amp;rbbrk;' =&gt; '&amp;#x03015;',
+	  '&amp;roang;' =&gt; '&amp;#x03019;',
+	  '&amp;robrk;' =&gt; '&amp;#x0301b;',
+	  '&amp;ropar;' =&gt; '&amp;#x02986;',
+	  '&amp;rppolint;' =&gt; '&amp;#x02a12;',
+	  '&amp;scpolint;' =&gt; '&amp;#x02a13;',
+	  '&amp;sim;' =&gt; '&amp;#x0223c;',
+	  '&amp;simdot;' =&gt; '&amp;#x02a6a;',
+	  '&amp;sime;' =&gt; '&amp;#x02243;',
+	  '&amp;smeparsl;' =&gt; '&amp;#x029e4;',
+	  '&amp;square;' =&gt; '&amp;#x025a1;',
+	  '&amp;squarf;' =&gt; '&amp;#x025aa;',
+	  '&amp;strns;' =&gt; '&amp;#x000af;',
+	  '&amp;sub;' =&gt; '&amp;#x02282;',
+	  '&amp;sube;' =&gt; '&amp;#x02286;',
+	  '&amp;sup;' =&gt; '&amp;#x02283;',
+	  '&amp;supe;' =&gt; '&amp;#x02287;',
+	  '&amp;tdot;' =&gt; '&amp;#x020db;',
+	  '&amp;there4;' =&gt; '&amp;#x02234;',
+	  '&amp;tint;' =&gt; '&amp;#x0222d;',
+	  '&amp;top;' =&gt; '&amp;#x022a4;',
+	  '&amp;topbot;' =&gt; '&amp;#x02336;',
+	  '&amp;topcir;' =&gt; '&amp;#x02af1;',
+	  '&amp;tprime;' =&gt; '&amp;#x02034;',
+	  '&amp;utdot;' =&gt; '&amp;#x022f0;',
+	  '&amp;uwangle;' =&gt; '&amp;#x029a7;',
+	  '&amp;vangrt;' =&gt; '&amp;#x0299c;',
+	  '&amp;veeeq;' =&gt; '&amp;#x0225a;',
+	  '&amp;verbar;' =&gt; '&amp;#x02016;',
+	  '&amp;wedgeq;' =&gt; '&amp;#x02259;',
+	  '&amp;xnis;' =&gt; '&amp;#x022fb;',
+	  '&amp;boxdl;' =&gt; '&amp;#x02557;',
+	  '&amp;boxdl;' =&gt; '&amp;#x02556;',
+	  '&amp;boxdl;' =&gt; '&amp;#x02555;',
+	  '&amp;boxdl;' =&gt; '&amp;#x02510;',
+	  '&amp;boxdr;' =&gt; '&amp;#x02554;',
+	  '&amp;boxdr;' =&gt; '&amp;#x02553;',
+	  '&amp;boxdr;' =&gt; '&amp;#x02552;',
+	  '&amp;boxdr;' =&gt; '&amp;#x0250c;',
+	  '&amp;boxh;' =&gt; '&amp;#x02550;',
+	  '&amp;boxh;' =&gt; '&amp;#x02500;',
+	  '&amp;boxhd;' =&gt; '&amp;#x02566;',
+	  '&amp;boxhd;' =&gt; '&amp;#x02564;',
+	  '&amp;boxhd;' =&gt; '&amp;#x02565;',
+	  '&amp;boxhd;' =&gt; '&amp;#x0252c;',
+	  '&amp;boxhu;' =&gt; '&amp;#x02569;',
+	  '&amp;boxhu;' =&gt; '&amp;#x02567;',
+	  '&amp;boxhu;' =&gt; '&amp;#x02568;',
+	  '&amp;boxhu;' =&gt; '&amp;#x02534;',
+	  '&amp;boxul;' =&gt; '&amp;#x0255d;',
+	  '&amp;boxul;' =&gt; '&amp;#x0255c;',
+	  '&amp;boxul;' =&gt; '&amp;#x0255b;',
+	  '&amp;boxul;' =&gt; '&amp;#x02518;',
+	  '&amp;boxur;' =&gt; '&amp;#x0255a;',
+	  '&amp;boxur;' =&gt; '&amp;#x02559;',
+	  '&amp;boxur;' =&gt; '&amp;#x02558;',
+	  '&amp;boxur;' =&gt; '&amp;#x02514;',
+	  '&amp;boxv;' =&gt; '&amp;#x02551;',
+	  '&amp;boxv;' =&gt; '&amp;#x02502;',
+	  '&amp;boxvh;' =&gt; '&amp;#x0256c;',
+	  '&amp;boxvh;' =&gt; '&amp;#x0256b;',
+	  '&amp;boxvh;' =&gt; '&amp;#x0256a;',
+	  '&amp;boxvh;' =&gt; '&amp;#x0253c;',
+	  '&amp;boxvl;' =&gt; '&amp;#x02563;',
+	  '&amp;boxvl;' =&gt; '&amp;#x02562;',
+	  '&amp;boxvl;' =&gt; '&amp;#x02561;',
+	  '&amp;boxvl;' =&gt; '&amp;#x02524;',
+	  '&amp;boxvr;' =&gt; '&amp;#x02560;',
+	  '&amp;boxvr;' =&gt; '&amp;#x0255f;',
+	  '&amp;boxvr;' =&gt; '&amp;#x0255e;',
+	  '&amp;boxvr;' =&gt; '&amp;#x0251c;',
+	  '&amp;acy;' =&gt; '&amp;#x00410;',
+	  '&amp;acy;' =&gt; '&amp;#x00430;',
+	  '&amp;bcy;' =&gt; '&amp;#x00411;',
+	  '&amp;bcy;' =&gt; '&amp;#x00431;',
+	  '&amp;chcy;' =&gt; '&amp;#x00427;',
+	  '&amp;chcy;' =&gt; '&amp;#x00447;',
+	  '&amp;dcy;' =&gt; '&amp;#x00414;',
+	  '&amp;dcy;' =&gt; '&amp;#x00434;',
+	  '&amp;ecy;' =&gt; '&amp;#x0042d;',
+	  '&amp;ecy;' =&gt; '&amp;#x0044d;',
+	  '&amp;fcy;' =&gt; '&amp;#x00424;',
+	  '&amp;fcy;' =&gt; '&amp;#x00444;',
+	  '&amp;gcy;' =&gt; '&amp;#x00413;',
+	  '&amp;gcy;' =&gt; '&amp;#x00433;',
+	  '&amp;hardcy;' =&gt; '&amp;#x0042a;',
+	  '&amp;hardcy;' =&gt; '&amp;#x0044a;',
+	  '&amp;icy;' =&gt; '&amp;#x00418;',
+	  '&amp;icy;' =&gt; '&amp;#x00438;',
+	  '&amp;iecy;' =&gt; '&amp;#x00415;',
+	  '&amp;iecy;' =&gt; '&amp;#x00435;',
+	  '&amp;iocy;' =&gt; '&amp;#x00401;',
+	  '&amp;iocy;' =&gt; '&amp;#x00451;',
+	  '&amp;jcy;' =&gt; '&amp;#x00419;',
+	  '&amp;jcy;' =&gt; '&amp;#x00439;',
+	  '&amp;kcy;' =&gt; '&amp;#x0041a;',
+	  '&amp;kcy;' =&gt; '&amp;#x0043a;',
+	  '&amp;khcy;' =&gt; '&amp;#x00425;',
+	  '&amp;khcy;' =&gt; '&amp;#x00445;',
+	  '&amp;lcy;' =&gt; '&amp;#x0041b;',
+	  '&amp;lcy;' =&gt; '&amp;#x0043b;',
+	  '&amp;mcy;' =&gt; '&amp;#x0041c;',
+	  '&amp;mcy;' =&gt; '&amp;#x0043c;',
+	  '&amp;ncy;' =&gt; '&amp;#x0041d;',
+	  '&amp;ncy;' =&gt; '&amp;#x0043d;',
+	  '&amp;numero;' =&gt; '&amp;#x02116;',
+	  '&amp;ocy;' =&gt; '&amp;#x0041e;',
+	  '&amp;ocy;' =&gt; '&amp;#x0043e;',
+	  '&amp;pcy;' =&gt; '&amp;#x0041f;',
+	  '&amp;pcy;' =&gt; '&amp;#x0043f;',
+	  '&amp;rcy;' =&gt; '&amp;#x00420;',
+	  '&amp;rcy;' =&gt; '&amp;#x00440;',
+	  '&amp;scy;' =&gt; '&amp;#x00421;',
+	  '&amp;scy;' =&gt; '&amp;#x00441;',
+	  '&amp;shchcy;' =&gt; '&amp;#x00429;',
+	  '&amp;shchcy;' =&gt; '&amp;#x00449;',
+	  '&amp;shcy;' =&gt; '&amp;#x00428;',
+	  '&amp;shcy;' =&gt; '&amp;#x00448;',
+	  '&amp;softcy;' =&gt; '&amp;#x0042c;',
+	  '&amp;softcy;' =&gt; '&amp;#x0044c;',
+	  '&amp;tcy;' =&gt; '&amp;#x00422;',
+	  '&amp;tcy;' =&gt; '&amp;#x00442;',
+	  '&amp;tscy;' =&gt; '&amp;#x00426;',
+	  '&amp;tscy;' =&gt; '&amp;#x00446;',
+	  '&amp;ucy;' =&gt; '&amp;#x00423;',
+	  '&amp;ucy;' =&gt; '&amp;#x00443;',
+	  '&amp;vcy;' =&gt; '&amp;#x00412;',
+	  '&amp;vcy;' =&gt; '&amp;#x00432;',
+	  '&amp;yacy;' =&gt; '&amp;#x0042f;',
+	  '&amp;yacy;' =&gt; '&amp;#x0044f;',
+	  '&amp;ycy;' =&gt; '&amp;#x0042b;',
+	  '&amp;ycy;' =&gt; '&amp;#x0044b;',
+	  '&amp;yucy;' =&gt; '&amp;#x0042e;',
+	  '&amp;yucy;' =&gt; '&amp;#x0044e;',
+	  '&amp;zcy;' =&gt; '&amp;#x00417;',
+	  '&amp;zcy;' =&gt; '&amp;#x00437;',
+	  '&amp;zhcy;' =&gt; '&amp;#x00416;',
+	  '&amp;zhcy;' =&gt; '&amp;#x00436;',
+	  '&amp;djcy;' =&gt; '&amp;#x00402;',
+	  '&amp;djcy;' =&gt; '&amp;#x00452;',
+	  '&amp;dscy;' =&gt; '&amp;#x00405;',
+	  '&amp;dscy;' =&gt; '&amp;#x00455;',
+	  '&amp;dzcy;' =&gt; '&amp;#x0040f;',
+	  '&amp;dzcy;' =&gt; '&amp;#x0045f;',
+	  '&amp;gjcy;' =&gt; '&amp;#x00403;',
+	  '&amp;gjcy;' =&gt; '&amp;#x00453;',
+	  '&amp;iukcy;' =&gt; '&amp;#x00406;',
+	  '&amp;iukcy;' =&gt; '&amp;#x00456;',
+	  '&amp;jsercy;' =&gt; '&amp;#x00408;',
+	  '&amp;jsercy;' =&gt; '&amp;#x00458;',
+	  '&amp;jukcy;' =&gt; '&amp;#x00404;',
+	  '&amp;jukcy;' =&gt; '&amp;#x00454;',
+	  '&amp;kjcy;' =&gt; '&amp;#x0040c;',
+	  '&amp;kjcy;' =&gt; '&amp;#x0045c;',
+	  '&amp;ljcy;' =&gt; '&amp;#x00409;',
+	  '&amp;ljcy;' =&gt; '&amp;#x00459;',
+	  '&amp;njcy;' =&gt; '&amp;#x0040a;',
+	  '&amp;njcy;' =&gt; '&amp;#x0045a;',
+	  '&amp;tshcy;' =&gt; '&amp;#x0040b;',
+	  '&amp;tshcy;' =&gt; '&amp;#x0045b;',
+	  '&amp;ubrcy;' =&gt; '&amp;#x0040e;',
+	  '&amp;ubrcy;' =&gt; '&amp;#x0045e;',
+	  '&amp;yicy;' =&gt; '&amp;#x00407;',
+	  '&amp;yicy;' =&gt; '&amp;#x00457;',
+	  '&amp;acute;' =&gt; '&amp;#x000b4;',
+	  '&amp;breve;' =&gt; '&amp;#x002d8;',
+	  '&amp;caron;' =&gt; '&amp;#x002c7;',
+	  '&amp;cedil;' =&gt; '&amp;#x000b8;',
+	  '&amp;circ;' =&gt; '&amp;#x002c6;',
+	  '&amp;dblac;' =&gt; '&amp;#x002dd;',
+	  '&amp;die;' =&gt; '&amp;#x000a8;',
+	  '&amp;dot;' =&gt; '&amp;#x002d9;',
+	  '&amp;grave;' =&gt; '&amp;#x00060;',
+	  '&amp;macr;' =&gt; '&amp;#x000af;',
+	  '&amp;ogon;' =&gt; '&amp;#x002db;',
+	  '&amp;ring;' =&gt; '&amp;#x002da;',
+	  '&amp;tilde;' =&gt; '&amp;#x002dc;',
+	  '&amp;uml;' =&gt; '&amp;#x000a8;',
+	  '&amp;aacute;' =&gt; '&amp;#x000c1;',
+	  '&amp;aacute;' =&gt; '&amp;#x000e1;',
+	  '&amp;acirc;' =&gt; '&amp;#x000c2;',
+	  '&amp;acirc;' =&gt; '&amp;#x000e2;',
+	  '&amp;aelig;' =&gt; '&amp;#x000c6;',
+	  '&amp;aelig;' =&gt; '&amp;#x000e6;',
+	  '&amp;agrave;' =&gt; '&amp;#x000c0;',
+	  '&amp;agrave;' =&gt; '&amp;#x000e0;',
+	  '&amp;aring;' =&gt; '&amp;#x000c5;',
+	  '&amp;aring;' =&gt; '&amp;#x000e5;',
+	  '&amp;atilde;' =&gt; '&amp;#x000c3;',
+	  '&amp;atilde;' =&gt; '&amp;#x000e3;',
+	  '&amp;auml;' =&gt; '&amp;#x000c4;',
+	  '&amp;auml;' =&gt; '&amp;#x000e4;',
+	  '&amp;ccedil;' =&gt; '&amp;#x000c7;',
+	  '&amp;ccedil;' =&gt; '&amp;#x000e7;',
+	  '&amp;eacute;' =&gt; '&amp;#x000c9;',
+	  '&amp;eacute;' =&gt; '&amp;#x000e9;',
+	  '&amp;ecirc;' =&gt; '&amp;#x000ca;',
+	  '&amp;ecirc;' =&gt; '&amp;#x000ea;',
+	  '&amp;egrave;' =&gt; '&amp;#x000c8;',
+	  '&amp;egrave;' =&gt; '&amp;#x000e8;',
+	  '&amp;eth;' =&gt; '&amp;#x000d0;',
+	  '&amp;eth;' =&gt; '&amp;#x000f0;',
+	  '&amp;euml;' =&gt; '&amp;#x000cb;',
+	  '&amp;euml;' =&gt; '&amp;#x000eb;',
+	  '&amp;iacute;' =&gt; '&amp;#x000cd;',
+	  '&amp;iacute;' =&gt; '&amp;#x000ed;',
+	  '&amp;icirc;' =&gt; '&amp;#x000ce;',
+	  '&amp;icirc;' =&gt; '&amp;#x000ee;',
+	  '&amp;igrave;' =&gt; '&amp;#x000cc;',
+	  '&amp;igrave;' =&gt; '&amp;#x000ec;',
+	  '&amp;iuml;' =&gt; '&amp;#x000cf;',
+	  '&amp;iuml;' =&gt; '&amp;#x000ef;',
+	  '&amp;ntilde;' =&gt; '&amp;#x000d1;',
+	  '&amp;ntilde;' =&gt; '&amp;#x000f1;',
+	  '&amp;oacute;' =&gt; '&amp;#x000d3;',
+	  '&amp;oacute;' =&gt; '&amp;#x000f3;',
+	  '&amp;ocirc;' =&gt; '&amp;#x000d4;',
+	  '&amp;ocirc;' =&gt; '&amp;#x000f4;',
+	  '&amp;ograve;' =&gt; '&amp;#x000d2;',
+	  '&amp;ograve;' =&gt; '&amp;#x000f2;',
+	  '&amp;oslash;' =&gt; '&amp;#x000d8;',
+	  '&amp;oslash;' =&gt; '&amp;#x000f8;',
+	  '&amp;otilde;' =&gt; '&amp;#x000d5;',
+	  '&amp;otilde;' =&gt; '&amp;#x000f5;',
+	  '&amp;ouml;' =&gt; '&amp;#x000d6;',
+	  '&amp;ouml;' =&gt; '&amp;#x000f6;',
+	  '&amp;szlig;' =&gt; '&amp;#x000df;',
+	  '&amp;thorn;' =&gt; '&amp;#x000de;',
+	  '&amp;thorn;' =&gt; '&amp;#x000fe;',
+	  '&amp;uacute;' =&gt; '&amp;#x000da;',
+	  '&amp;uacute;' =&gt; '&amp;#x000fa;',
+	  '&amp;ucirc;' =&gt; '&amp;#x000db;',
+	  '&amp;ucirc;' =&gt; '&amp;#x000fb;',
+	  '&amp;ugrave;' =&gt; '&amp;#x000d9;',
+	  '&amp;ugrave;' =&gt; '&amp;#x000f9;',
+	  '&amp;uuml;' =&gt; '&amp;#x000dc;',
+	  '&amp;uuml;' =&gt; '&amp;#x000fc;',
+	  '&amp;yacute;' =&gt; '&amp;#x000dd;',
+	  '&amp;yacute;' =&gt; '&amp;#x000fd;',
+	  '&amp;yuml;' =&gt; '&amp;#x000ff;',
+	  '&amp;abreve;' =&gt; '&amp;#x00102;',
+	  '&amp;abreve;' =&gt; '&amp;#x00103;',
+	  '&amp;amacr;' =&gt; '&amp;#x00100;',
+	  '&amp;amacr;' =&gt; '&amp;#x00101;',
+	  '&amp;aogon;' =&gt; '&amp;#x00104;',
+	  '&amp;aogon;' =&gt; '&amp;#x00105;',
+	  '&amp;cacute;' =&gt; '&amp;#x00106;',
+	  '&amp;cacute;' =&gt; '&amp;#x00107;',
+	  '&amp;ccaron;' =&gt; '&amp;#x0010c;',
+	  '&amp;ccaron;' =&gt; '&amp;#x0010d;',
+	  '&amp;ccirc;' =&gt; '&amp;#x00108;',
+	  '&amp;ccirc;' =&gt; '&amp;#x00109;',
+	  '&amp;cdot;' =&gt; '&amp;#x0010a;',
+	  '&amp;cdot;' =&gt; '&amp;#x0010b;',
+	  '&amp;dcaron;' =&gt; '&amp;#x0010e;',
+	  '&amp;dcaron;' =&gt; '&amp;#x0010f;',
+	  '&amp;dstrok;' =&gt; '&amp;#x00110;',
+	  '&amp;dstrok;' =&gt; '&amp;#x00111;',
+	  '&amp;ecaron;' =&gt; '&amp;#x0011a;',
+	  '&amp;ecaron;' =&gt; '&amp;#x0011b;',
+	  '&amp;edot;' =&gt; '&amp;#x00116;',
+	  '&amp;edot;' =&gt; '&amp;#x00117;',
+	  '&amp;emacr;' =&gt; '&amp;#x00112;',
+	  '&amp;emacr;' =&gt; '&amp;#x00113;',
+	  '&amp;eng;' =&gt; '&amp;#x0014a;',
+	  '&amp;eng;' =&gt; '&amp;#x0014b;',
+	  '&amp;eogon;' =&gt; '&amp;#x00118;',
+	  '&amp;eogon;' =&gt; '&amp;#x00119;',
+	  '&amp;gacute;' =&gt; '&amp;#x001f5;',
+	  '&amp;gbreve;' =&gt; '&amp;#x0011e;',
+	  '&amp;gbreve;' =&gt; '&amp;#x0011f;',
+	  '&amp;gcedil;' =&gt; '&amp;#x00122;',
+	  '&amp;gcirc;' =&gt; '&amp;#x0011c;',
+	  '&amp;gcirc;' =&gt; '&amp;#x0011d;',
+	  '&amp;gdot;' =&gt; '&amp;#x00120;',
+	  '&amp;gdot;' =&gt; '&amp;#x00121;',
+	  '&amp;hcirc;' =&gt; '&amp;#x00124;',
+	  '&amp;hcirc;' =&gt; '&amp;#x00125;',
+	  '&amp;hstrok;' =&gt; '&amp;#x00126;',
+	  '&amp;hstrok;' =&gt; '&amp;#x00127;',
+	  '&amp;idot;' =&gt; '&amp;#x00130;',
+	  '&amp;ijlig;' =&gt; '&amp;#x00132;',
+	  '&amp;ijlig;' =&gt; '&amp;#x00133;',
+	  '&amp;imacr;' =&gt; '&amp;#x0012a;',
+	  '&amp;imacr;' =&gt; '&amp;#x0012b;',
+	  '&amp;inodot;' =&gt; '&amp;#x00131;',
+	  '&amp;iogon;' =&gt; '&amp;#x0012e;',
+	  '&amp;iogon;' =&gt; '&amp;#x0012f;',
+	  '&amp;itilde;' =&gt; '&amp;#x00128;',
+	  '&amp;itilde;' =&gt; '&amp;#x00129;',
+	  '&amp;jcirc;' =&gt; '&amp;#x00134;',
+	  '&amp;jcirc;' =&gt; '&amp;#x00135;',
+	  '&amp;kcedil;' =&gt; '&amp;#x00136;',
+	  '&amp;kcedil;' =&gt; '&amp;#x00137;',
+	  '&amp;kgreen;' =&gt; '&amp;#x00138;',
+	  '&amp;lacute;' =&gt; '&amp;#x00139;',
+	  '&amp;lacute;' =&gt; '&amp;#x0013a;',
+	  '&amp;lcaron;' =&gt; '&amp;#x0013d;',
+	  '&amp;lcaron;' =&gt; '&amp;#x0013e;',
+	  '&amp;lcedil;' =&gt; '&amp;#x0013b;',
+	  '&amp;lcedil;' =&gt; '&amp;#x0013c;',
+	  '&amp;lmidot;' =&gt; '&amp;#x0013f;',
+	  '&amp;lmidot;' =&gt; '&amp;#x00140;',
+	  '&amp;lstrok;' =&gt; '&amp;#x00141;',
+	  '&amp;lstrok;' =&gt; '&amp;#x00142;',
+	  '&amp;nacute;' =&gt; '&amp;#x00143;',
+	  '&amp;nacute;' =&gt; '&amp;#x00144;',
+	  '&amp;napos;' =&gt; '&amp;#x00149;',
+	  '&amp;ncaron;' =&gt; '&amp;#x00147;',
+	  '&amp;ncaron;' =&gt; '&amp;#x00148;',
+	  '&amp;ncedil;' =&gt; '&amp;#x00145;',
+	  '&amp;ncedil;' =&gt; '&amp;#x00146;',
+	  '&amp;odblac;' =&gt; '&amp;#x00150;',
+	  '&amp;odblac;' =&gt; '&amp;#x00151;',
+	  '&amp;oelig;' =&gt; '&amp;#x00152;',
+	  '&amp;oelig;' =&gt; '&amp;#x00153;',
+	  '&amp;omacr;' =&gt; '&amp;#x0014c;',
+	  '&amp;omacr;' =&gt; '&amp;#x0014d;',
+	  '&amp;racute;' =&gt; '&amp;#x00154;',
+	  '&amp;racute;' =&gt; '&amp;#x00155;',
+	  '&amp;rcaron;' =&gt; '&amp;#x00158;',
+	  '&amp;rcaron;' =&gt; '&amp;#x00159;',
+	  '&amp;rcedil;' =&gt; '&amp;#x00156;',
+	  '&amp;rcedil;' =&gt; '&amp;#x00157;',
+	  '&amp;sacute;' =&gt; '&amp;#x0015a;',
+	  '&amp;sacute;' =&gt; '&amp;#x0015b;',
+	  '&amp;scaron;' =&gt; '&amp;#x00160;',
+	  '&amp;scaron;' =&gt; '&amp;#x00161;',
+	  '&amp;scedil;' =&gt; '&amp;#x0015e;',
+	  '&amp;scedil;' =&gt; '&amp;#x0015f;',
+	  '&amp;scirc;' =&gt; '&amp;#x0015c;',
+	  '&amp;scirc;' =&gt; '&amp;#x0015d;',
+	  '&amp;tcaron;' =&gt; '&amp;#x00164;',
+	  '&amp;tcaron;' =&gt; '&amp;#x00165;',
+	  '&amp;tcedil;' =&gt; '&amp;#x00162;',
+	  '&amp;tcedil;' =&gt; '&amp;#x00163;',
+	  '&amp;tstrok;' =&gt; '&amp;#x00166;',
+	  '&amp;tstrok;' =&gt; '&amp;#x00167;',
+	  '&amp;ubreve;' =&gt; '&amp;#x0016c;',
+	  '&amp;ubreve;' =&gt; '&amp;#x0016d;',
+	  '&amp;udblac;' =&gt; '&amp;#x00170;',
+	  '&amp;udblac;' =&gt; '&amp;#x00171;',
+	  '&amp;umacr;' =&gt; '&amp;#x0016a;',
+	  '&amp;umacr;' =&gt; '&amp;#x0016b;',
+	  '&amp;uogon;' =&gt; '&amp;#x00172;',
+	  '&amp;uogon;' =&gt; '&amp;#x00173;',
+	  '&amp;uring;' =&gt; '&amp;#x0016e;',
+	  '&amp;uring;' =&gt; '&amp;#x0016f;',
+	  '&amp;utilde;' =&gt; '&amp;#x00168;',
+	  '&amp;utilde;' =&gt; '&amp;#x00169;',
+	  '&amp;wcirc;' =&gt; '&amp;#x00174;',
+	  '&amp;wcirc;' =&gt; '&amp;#x00175;',
+	  '&amp;ycirc;' =&gt; '&amp;#x00176;',
+	  '&amp;ycirc;' =&gt; '&amp;#x00177;',
+	  '&amp;yuml;' =&gt; '&amp;#x00178;',
+	  '&amp;zacute;' =&gt; '&amp;#x00179;',
+	  '&amp;zacute;' =&gt; '&amp;#x0017a;',
+	  '&amp;zcaron;' =&gt; '&amp;#x0017d;',
+	  '&amp;zcaron;' =&gt; '&amp;#x0017e;',
+	  '&amp;zdot;' =&gt; '&amp;#x0017b;',
+	  '&amp;zdot;' =&gt; '&amp;#x0017c;',
+	  '&amp;ast;' =&gt; '&amp;#x0002a;',
+	  '&amp;brvbar;' =&gt; '&amp;#x000a6;',
+	  '&amp;bsol;' =&gt; '&amp;#x0005c;',
+	  '&amp;cent;' =&gt; '&amp;#x000a2;',
+	  '&amp;colon;' =&gt; '&amp;#x0003a;',
+	  '&amp;comma;' =&gt; '&amp;#x0002c;',
+	  '&amp;commat;' =&gt; '&amp;#x00040;',
+	  '&amp;copy;' =&gt; '&amp;#x000a9;',
+	  '&amp;curren;' =&gt; '&amp;#x000a4;',
+	  '&amp;darr;' =&gt; '&amp;#x02193;',
+	  '&amp;deg;' =&gt; '&amp;#x000b0;',
+	  '&amp;divide;' =&gt; '&amp;#x000f7;',
+	  '&amp;dollar;' =&gt; '&amp;#x00024;',
+	  '&amp;equals;' =&gt; '&amp;#x0003d;',
+	  '&amp;excl;' =&gt; '&amp;#x00021;',
+	  '&amp;frac12;' =&gt; '&amp;#x000bd;',
+	  '&amp;frac14;' =&gt; '&amp;#x000bc;',
+	  '&amp;frac18;' =&gt; '&amp;#x0215b;',
+	  '&amp;frac34;' =&gt; '&amp;#x000be;',
+	  '&amp;frac38;' =&gt; '&amp;#x0215c;',
+	  '&amp;frac58;' =&gt; '&amp;#x0215d;',
+	  '&amp;frac78;' =&gt; '&amp;#x0215e;',
+	  '&amp;half;' =&gt; '&amp;#x000bd;',
+	  '&amp;horbar;' =&gt; '&amp;#x02015;',
+	  '&amp;hyphen;' =&gt; '&amp;#x02010;',
+	  '&amp;iexcl;' =&gt; '&amp;#x000a1;',
+	  '&amp;iquest;' =&gt; '&amp;#x000bf;',
+	  '&amp;laquo;' =&gt; '&amp;#x000ab;',
+	  '&amp;larr;' =&gt; '&amp;#x02190;',
+	  '&amp;lcub;' =&gt; '&amp;#x0007b;',
+	  '&amp;ldquo;' =&gt; '&amp;#x0201c;',
+	  '&amp;lowbar;' =&gt; '&amp;#x0005f;',
+	  '&amp;lpar;' =&gt; '&amp;#x00028;',
+	  '&amp;lsqb;' =&gt; '&amp;#x0005b;',
+	  '&amp;lsquo;' =&gt; '&amp;#x02018;',
+	  '&amp;micro;' =&gt; '&amp;#x000b5;',
+	  '&amp;middot;' =&gt; '&amp;#x000b7;',
+	  '&amp;nbsp;' =&gt; '&amp;#x000a0;',
+	  '&amp;not;' =&gt; '&amp;#x000ac;',
+	  '&amp;num;' =&gt; '&amp;#x00023;',
+	  '&amp;ohm;' =&gt; '&amp;#x02126;',
+	  '&amp;ordf;' =&gt; '&amp;#x000aa;',
+	  '&amp;ordm;' =&gt; '&amp;#x000ba;',
+	  '&amp;para;' =&gt; '&amp;#x000b6;',
+	  '&amp;percnt;' =&gt; '&amp;#x00025;',
+	  '&amp;period;' =&gt; '&amp;#x0002e;',
+	  '&amp;plus;' =&gt; '&amp;#x0002b;',
+	  '&amp;plusmn;' =&gt; '&amp;#x000b1;',
+	  '&amp;pound;' =&gt; '&amp;#x000a3;',
+	  '&amp;quest;' =&gt; '&amp;#x0003f;',
+	  '&amp;raquo;' =&gt; '&amp;#x000bb;',
+	  '&amp;rarr;' =&gt; '&amp;#x02192;',
+	  '&amp;rcub;' =&gt; '&amp;#x0007d;',
+	  '&amp;rdquo;' =&gt; '&amp;#x0201d;',
+	  '&amp;reg;' =&gt; '&amp;#x000ae;',
+	  '&amp;rpar;' =&gt; '&amp;#x00029;',
+	  '&amp;rsqb;' =&gt; '&amp;#x0005d;',
+	  '&amp;rsquo;' =&gt; '&amp;#x02019;',
+	  '&amp;sect;' =&gt; '&amp;#x000a7;',
+	  '&amp;semi;' =&gt; '&amp;#x0003b;',
+	  '&amp;shy;' =&gt; '&amp;#x000ad;',
+	  '&amp;sol;' =&gt; '&amp;#x0002f;',
+	  '&amp;sung;' =&gt; '&amp;#x0266a;',
+	  '&amp;sup1;' =&gt; '&amp;#x000b9;',
+	  '&amp;sup2;' =&gt; '&amp;#x000b2;',
+	  '&amp;sup3;' =&gt; '&amp;#x000b3;',
+	  '&amp;times;' =&gt; '&amp;#x000d7;',
+	  '&amp;trade;' =&gt; '&amp;#x02122;',
+	  '&amp;uarr;' =&gt; '&amp;#x02191;',
+	  '&amp;verbar;' =&gt; '&amp;#x0007c;',
+	  '&amp;yen;' =&gt; '&amp;#x000a5;',
+	  '&amp;blank;' =&gt; '&amp;#x02423;',
+	  '&amp;blk12;' =&gt; '&amp;#x02592;',
+	  '&amp;blk14;' =&gt; '&amp;#x02591;',
+	  '&amp;blk34;' =&gt; '&amp;#x02593;',
+	  '&amp;block;' =&gt; '&amp;#x02588;',
+	  '&amp;bull;' =&gt; '&amp;#x02022;',
+	  '&amp;caret;' =&gt; '&amp;#x02041;',
+	  '&amp;check;' =&gt; '&amp;#x02713;',
+	  '&amp;cir;' =&gt; '&amp;#x025cb;',
+	  '&amp;clubs;' =&gt; '&amp;#x02663;',
+	  '&amp;copysr;' =&gt; '&amp;#x02117;',
+	  '&amp;cross;' =&gt; '&amp;#x02717;',
+	  '&amp;dagger;' =&gt; '&amp;#x02021;',
+	  '&amp;dagger;' =&gt; '&amp;#x02020;',
+	  '&amp;dash;' =&gt; '&amp;#x02010;',
+	  '&amp;diams;' =&gt; '&amp;#x02666;',
+	  '&amp;dlcrop;' =&gt; '&amp;#x0230d;',
+	  '&amp;drcrop;' =&gt; '&amp;#x0230c;',
+	  '&amp;dtri;' =&gt; '&amp;#x025bf;',
+	  '&amp;dtrif;' =&gt; '&amp;#x025be;',
+	  '&amp;emsp;' =&gt; '&amp;#x02003;',
+	  '&amp;emsp13;' =&gt; '&amp;#x02004;',
+	  '&amp;emsp14;' =&gt; '&amp;#x02005;',
+	  '&amp;ensp;' =&gt; '&amp;#x02002;',
+	  '&amp;female;' =&gt; '&amp;#x02640;',
+	  '&amp;ffilig;' =&gt; '&amp;#x0fb03;',
+	  '&amp;fflig;' =&gt; '&amp;#x0fb00;',
+	  '&amp;ffllig;' =&gt; '&amp;#x0fb04;',
+	  '&amp;filig;' =&gt; '&amp;#x0fb01;',
+	  '&amp;flat;' =&gt; '&amp;#x0266d;',
+	  '&amp;fllig;' =&gt; '&amp;#x0fb02;',
+	  '&amp;frac13;' =&gt; '&amp;#x02153;',
+	  '&amp;frac15;' =&gt; '&amp;#x02155;',
+	  '&amp;frac16;' =&gt; '&amp;#x02159;',
+	  '&amp;frac23;' =&gt; '&amp;#x02154;',
+	  '&amp;frac25;' =&gt; '&amp;#x02156;',
+	  '&amp;frac35;' =&gt; '&amp;#x02157;',
+	  '&amp;frac45;' =&gt; '&amp;#x02158;',
+	  '&amp;frac56;' =&gt; '&amp;#x0215a;',
+	  '&amp;hairsp;' =&gt; '&amp;#x0200a;',
+	  '&amp;hearts;' =&gt; '&amp;#x02665;',
+	  '&amp;hellip;' =&gt; '&amp;#x02026;',
+	  '&amp;hybull;' =&gt; '&amp;#x02043;',
+	  '&amp;incare;' =&gt; '&amp;#x02105;',
+	  '&amp;ldquor;' =&gt; '&amp;#x0201e;',
+	  '&amp;lhblk;' =&gt; '&amp;#x02584;',
+	  '&amp;loz;' =&gt; '&amp;#x025ca;',
+	  '&amp;lozf;' =&gt; '&amp;#x029eb;',
+	  '&amp;lsquor;' =&gt; '&amp;#x0201a;',
+	  '&amp;ltri;' =&gt; '&amp;#x025c3;',
+	  '&amp;ltrif;' =&gt; '&amp;#x025c2;',
+	  '&amp;male;' =&gt; '&amp;#x02642;',
+	  '&amp;malt;' =&gt; '&amp;#x02720;',
+	  '&amp;marker;' =&gt; '&amp;#x025ae;',
+	  '&amp;mdash;' =&gt; '&amp;#x02014;',
+	  '&amp;mldr;' =&gt; '&amp;#x02026;',
+	  '&amp;natur;' =&gt; '&amp;#x0266e;',
+	  '&amp;ndash;' =&gt; '&amp;#x02013;',
+	  '&amp;nldr;' =&gt; '&amp;#x02025;',
+	  '&amp;numsp;' =&gt; '&amp;#x02007;',
+	  '&amp;phone;' =&gt; '&amp;#x0260e;',
+	  '&amp;puncsp;' =&gt; '&amp;#x02008;',
+	  '&amp;rdquor;' =&gt; '&amp;#x0201d;',
+	  '&amp;rect;' =&gt; '&amp;#x025ad;',
+	  '&amp;rsquor;' =&gt; '&amp;#x02019;',
+	  '&amp;rtri;' =&gt; '&amp;#x025b9;',
+	  '&amp;rtrif;' =&gt; '&amp;#x025b8;',
+	  '&amp;rx;' =&gt; '&amp;#x0211e;',
+	  '&amp;sext;' =&gt; '&amp;#x02736;',
+	  '&amp;sharp;' =&gt; '&amp;#x0266f;',
+	  '&amp;spades;' =&gt; '&amp;#x02660;',
+	  '&amp;squ;' =&gt; '&amp;#x025a1;',
+	  '&amp;squf;' =&gt; '&amp;#x025aa;',
+	  '&amp;star;' =&gt; '&amp;#x02606;',
+	  '&amp;starf;' =&gt; '&amp;#x02605;',
+	  '&amp;target;' =&gt; '&amp;#x02316;',
+	  '&amp;telrec;' =&gt; '&amp;#x02315;',
+	  '&amp;thinsp;' =&gt; '&amp;#x02009;',
+	  '&amp;uhblk;' =&gt; '&amp;#x02580;',
+	  '&amp;ulcrop;' =&gt; '&amp;#x0230f;',
+	  '&amp;urcrop;' =&gt; '&amp;#x0230e;',
+	  '&amp;utri;' =&gt; '&amp;#x025b5;',
+	  '&amp;utrif;' =&gt; '&amp;#x025b4;',
+	  '&amp;vellip;' =&gt; '&amp;#x022ee;',
+	  '&amp;af;' =&gt; '&amp;#x02061;',
+	  '&amp;aopf;' =&gt; '&amp;#x1d552;',
+	  '&amp;asympeq;' =&gt; '&amp;#x0224d;',
+	  '&amp;bopf;' =&gt; '&amp;#x1d553;',
+	  '&amp;copf;' =&gt; '&amp;#x1d554;',
+	  '&amp;cross;' =&gt; '&amp;#x02a2f;',
+	  '&amp;dd;' =&gt; '&amp;#x02145;',
+	  '&amp;dd;' =&gt; '&amp;#x02146;',
+	  '&amp;dopf;' =&gt; '&amp;#x1d555;',
+	  '&amp;downarrowbar;' =&gt; '&amp;#x02913;',
+	  '&amp;downbreve;' =&gt; '&amp;#x00311;',
+	  '&amp;downleftrightvector;' =&gt; '&amp;#x02950;',
+	  '&amp;downleftteevector;' =&gt; '&amp;#x0295e;',
+	  '&amp;downleftvectorbar;' =&gt; '&amp;#x02956;',
+	  '&amp;downrightteevector;' =&gt; '&amp;#x0295f;',
+	  '&amp;downrightvectorbar;' =&gt; '&amp;#x02957;',
+	  '&amp;ee;' =&gt; '&amp;#x02147;',
+	  '&amp;emptysmallsquare;' =&gt; '&amp;#x025fb;',
+	  '&amp;emptyverysmallsquare;' =&gt; '&amp;#x025ab;',
+	  '&amp;eopf;' =&gt; '&amp;#x1d556;',
+	  '&amp;equal;' =&gt; '&amp;#x02a75;',
+	  '&amp;filledsmallsquare;' =&gt; '&amp;#x025fc;',
+	  '&amp;filledverysmallsquare;' =&gt; '&amp;#x025aa;',
+	  '&amp;fopf;' =&gt; '&amp;#x1d557;',
+	  '&amp;gopf;' =&gt; '&amp;#x1d558;',
+	  '&amp;greatergreater;' =&gt; '&amp;#x02aa2;',
+	  '&amp;hat;' =&gt; '&amp;#x0005e;',
+	  '&amp;hopf;' =&gt; '&amp;#x1d559;',
+	  '&amp;horizontalline;' =&gt; '&amp;#x02500;',
+	  '&amp;ic;' =&gt; '&amp;#x02063;',
+	  '&amp;ii;' =&gt; '&amp;#x02148;',
+	  '&amp;iopf;' =&gt; '&amp;#x1d55a;',
+	  '&amp;it;' =&gt; '&amp;#x02062;',
+	  '&amp;jopf;' =&gt; '&amp;#x1d55b;',
+	  '&amp;kopf;' =&gt; '&amp;#x1d55c;',
+	  '&amp;larrb;' =&gt; '&amp;#x021e4;',
+	  '&amp;leftdownteevector;' =&gt; '&amp;#x02961;',
+	  '&amp;leftdownvectorbar;' =&gt; '&amp;#x02959;',
+	  '&amp;leftrightvector;' =&gt; '&amp;#x0294e;',
+	  '&amp;leftteevector;' =&gt; '&amp;#x0295a;',
+	  '&amp;lefttrianglebar;' =&gt; '&amp;#x029cf;',
+	  '&amp;leftupdownvector;' =&gt; '&amp;#x02951;',
+	  '&amp;leftupteevector;' =&gt; '&amp;#x02960;',
+	  '&amp;leftupvectorbar;' =&gt; '&amp;#x02958;',
+	  '&amp;leftvectorbar;' =&gt; '&amp;#x02952;',
+	  '&amp;lessless;' =&gt; '&amp;#x02aa1;',
+	  '&amp;lopf;' =&gt; '&amp;#x1d55d;',
+	  '&amp;mapstodown;' =&gt; '&amp;#x021a7;',
+	  '&amp;mapstoleft;' =&gt; '&amp;#x021a4;',
+	  '&amp;mapstoup;' =&gt; '&amp;#x021a5;',
+	  '&amp;mediumspace;' =&gt; '&amp;#x0205f;',
+	  '&amp;mopf;' =&gt; '&amp;#x1d55e;',
+	  '&amp;nbump;' =&gt; '&amp;#x0224e;&amp;#x00338;',
+	  '&amp;nbumpe;' =&gt; '&amp;#x0224f;&amp;#x00338;',
+	  '&amp;nesim;' =&gt; '&amp;#x02242;&amp;#x00338;',
+	  '&amp;newline;' =&gt; '&amp;#x0000a;',
+	  '&amp;nobreak;' =&gt; '&amp;#x02060;',
+	  '&amp;nopf;' =&gt; '&amp;#x1d55f;',
+	  '&amp;notcupcap;' =&gt; '&amp;#x0226d;',
+	  '&amp;nothumpequal;' =&gt; '&amp;#x0224f;&amp;#x00338;',
+	  '&amp;notlefttrianglebar;' =&gt; '&amp;#x029cf;&amp;#x00338;',
+	  '&amp;notnestedgreatergreater;' =&gt; '&amp;#x02aa2;&amp;#x00338;',
+	  '&amp;notnestedlessless;' =&gt; '&amp;#x02aa1;&amp;#x00338;',
+	  '&amp;notrighttrianglebar;' =&gt; '&amp;#x029d0;&amp;#x00338;',
+	  '&amp;notsquaresubset;' =&gt; '&amp;#x0228f;&amp;#x00338;',
+	  '&amp;notsquaresuperset;' =&gt; '&amp;#x02290;&amp;#x00338;',
+	  '&amp;notsucceedstilde;' =&gt; '&amp;#x0227f;&amp;#x00338;',
+	  '&amp;oopf;' =&gt; '&amp;#x1d560;',
+	  '&amp;overbar;' =&gt; '&amp;#x000af;',
+	  '&amp;overbrace;' =&gt; '&amp;#x0fe37;',
+	  '&amp;overbracket;' =&gt; '&amp;#x023b4;',
+	  '&amp;overparenthesis;' =&gt; '&amp;#x0fe35;',
+	  '&amp;planckh;' =&gt; '&amp;#x0210e;',
+	  '&amp;popf;' =&gt; '&amp;#x1d561;',
+	  '&amp;product;' =&gt; '&amp;#x0220f;',
+	  '&amp;qopf;' =&gt; '&amp;#x1d562;',
+	  '&amp;rarrb;' =&gt; '&amp;#x021e5;',
+	  '&amp;rightdownteevector;' =&gt; '&amp;#x0295d;',
+	  '&amp;rightdownvectorbar;' =&gt; '&amp;#x02955;',
+	  '&amp;rightteevector;' =&gt; '&amp;#x0295b;',
+	  '&amp;righttrianglebar;' =&gt; '&amp;#x029d0;',
+	  '&amp;rightupdownvector;' =&gt; '&amp;#x0294f;',
+	  '&amp;rightupteevector;' =&gt; '&amp;#x0295c;',
+	  '&amp;rightupvectorbar;' =&gt; '&amp;#x02954;',
+	  '&amp;rightvectorbar;' =&gt; '&amp;#x02953;',
+	  '&amp;ropf;' =&gt; '&amp;#x1d563;',
+	  '&amp;roundimplies;' =&gt; '&amp;#x02970;',
+	  '&amp;ruledelayed;' =&gt; '&amp;#x029f4;',
+	  '&amp;sopf;' =&gt; '&amp;#x1d564;',
+	  '&amp;tab;' =&gt; '&amp;#x00009;',
+	  '&amp;thickspace;' =&gt; '&amp;#x02009;&amp;#x0200a;&amp;#x0200a;',
+	  '&amp;topf;' =&gt; '&amp;#x1d565;',
+	  '&amp;underbar;' =&gt; '&amp;#x00332;',
+	  '&amp;underbrace;' =&gt; '&amp;#x0fe38;',
+	  '&amp;underbracket;' =&gt; '&amp;#x023b5;',
+	  '&amp;underparenthesis;' =&gt; '&amp;#x0fe36;',
+	  '&amp;uopf;' =&gt; '&amp;#x1d566;',
+	  '&amp;uparrowbar;' =&gt; '&amp;#x02912;',
+	  '&amp;upsilon;' =&gt; '&amp;#x003a5;',
+	  '&amp;verticalline;' =&gt; '&amp;#x0007c;',
+	  '&amp;verticalseparator;' =&gt; '&amp;#x02758;',
+	  '&amp;vopf;' =&gt; '&amp;#x1d567;',
+	  '&amp;wopf;' =&gt; '&amp;#x1d568;',
+	  '&amp;xopf;' =&gt; '&amp;#x1d569;',
+	  '&amp;yopf;' =&gt; '&amp;#x1d56a;',
+	  '&amp;zerowidthspace;' =&gt; '&amp;#x0200b;',
+	  '&amp;zopf;' =&gt; '&amp;#x1d56b;',
+	  '&amp;angle;' =&gt; '&amp;#x02220;',
+	  '&amp;applyfunction;' =&gt; '&amp;#x02061;',
+	  '&amp;approx;' =&gt; '&amp;#x02248;',
+	  '&amp;approxeq;' =&gt; '&amp;#x0224a;',
+	  '&amp;assign;' =&gt; '&amp;#x02254;',
+	  '&amp;backcong;' =&gt; '&amp;#x0224c;',
+	  '&amp;backepsilon;' =&gt; '&amp;#x003f6;',
+	  '&amp;backprime;' =&gt; '&amp;#x02035;',
+	  '&amp;backsim;' =&gt; '&amp;#x0223d;',
+	  '&amp;backsimeq;' =&gt; '&amp;#x022cd;',
+	  '&amp;backslash;' =&gt; '&amp;#x02216;',
+	  '&amp;barwedge;' =&gt; '&amp;#x02305;',
+	  '&amp;because;' =&gt; '&amp;#x02235;',
+	  '&amp;because;' =&gt; '&amp;#x02235;',
+	  '&amp;bernoullis;' =&gt; '&amp;#x0212c;',
+	  '&amp;between;' =&gt; '&amp;#x0226c;',
+	  '&amp;bigcap;' =&gt; '&amp;#x022c2;',
+	  '&amp;bigcirc;' =&gt; '&amp;#x025ef;',
+	  '&amp;bigcup;' =&gt; '&amp;#x022c3;',
+	  '&amp;bigodot;' =&gt; '&amp;#x02a00;',
+	  '&amp;bigoplus;' =&gt; '&amp;#x02a01;',
+	  '&amp;bigotimes;' =&gt; '&amp;#x02a02;',
+	  '&amp;bigsqcup;' =&gt; '&amp;#x02a06;',
+	  '&amp;bigstar;' =&gt; '&amp;#x02605;',
+	  '&amp;bigtriangledown;' =&gt; '&amp;#x025bd;',
+	  '&amp;bigtriangleup;' =&gt; '&amp;#x025b3;',
+	  '&amp;biguplus;' =&gt; '&amp;#x02a04;',
+	  '&amp;bigvee;' =&gt; '&amp;#x022c1;',
+	  '&amp;bigwedge;' =&gt; '&amp;#x022c0;',
+	  '&amp;bkarow;' =&gt; '&amp;#x0290d;',
+	  '&amp;blacklozenge;' =&gt; '&amp;#x029eb;',
+	  '&amp;blacksquare;' =&gt; '&amp;#x025aa;',
+	  '&amp;blacktriangle;' =&gt; '&amp;#x025b4;',
+	  '&amp;blacktriangledown;' =&gt; '&amp;#x025be;',
+	  '&amp;blacktriangleleft;' =&gt; '&amp;#x025c2;',
+	  '&amp;blacktriangleright;' =&gt; '&amp;#x025b8;',
+	  '&amp;bot;' =&gt; '&amp;#x022a5;',
+	  '&amp;boxminus;' =&gt; '&amp;#x0229f;',
+	  '&amp;boxplus;' =&gt; '&amp;#x0229e;',
+	  '&amp;boxtimes;' =&gt; '&amp;#x022a0;',
+	  '&amp;breve;' =&gt; '&amp;#x002d8;',
+	  '&amp;bullet;' =&gt; '&amp;#x02022;',
+	  '&amp;bumpeq;' =&gt; '&amp;#x0224e;',
+	  '&amp;bumpeq;' =&gt; '&amp;#x0224f;',
+	  '&amp;capitaldifferentiald;' =&gt; '&amp;#x02145;',
+	  '&amp;cayleys;' =&gt; '&amp;#x0212d;',
+	  '&amp;cedilla;' =&gt; '&amp;#x000b8;',
+	  '&amp;centerdot;' =&gt; '&amp;#x000b7;',
+	  '&amp;centerdot;' =&gt; '&amp;#x000b7;',
+	  '&amp;checkmark;' =&gt; '&amp;#x02713;',
+	  '&amp;circeq;' =&gt; '&amp;#x02257;',
+	  '&amp;circlearrowleft;' =&gt; '&amp;#x021ba;',
+	  '&amp;circlearrowright;' =&gt; '&amp;#x021bb;',
+	  '&amp;circledast;' =&gt; '&amp;#x0229b;',
+	  '&amp;circledcirc;' =&gt; '&amp;#x0229a;',
+	  '&amp;circleddash;' =&gt; '&amp;#x0229d;',
+	  '&amp;circledot;' =&gt; '&amp;#x02299;',
+	  '&amp;circledr;' =&gt; '&amp;#x000ae;',
+	  '&amp;circleds;' =&gt; '&amp;#x024c8;',
+	  '&amp;circleminus;' =&gt; '&amp;#x02296;',
+	  '&amp;circleplus;' =&gt; '&amp;#x02295;',
+	  '&amp;circletimes;' =&gt; '&amp;#x02297;',
+	  '&amp;clockwisecontourintegral;' =&gt; '&amp;#x02232;',
+	  '&amp;closecurlydoublequote;' =&gt; '&amp;#x0201d;',
+	  '&amp;closecurlyquote;' =&gt; '&amp;#x02019;',
+	  '&amp;clubsuit;' =&gt; '&amp;#x02663;',
+	  '&amp;coloneq;' =&gt; '&amp;#x02254;',
+	  '&amp;complement;' =&gt; '&amp;#x02201;',
+	  '&amp;complexes;' =&gt; '&amp;#x02102;',
+	  '&amp;congruent;' =&gt; '&amp;#x02261;',
+	  '&amp;contourintegral;' =&gt; '&amp;#x0222e;',
+	  '&amp;coproduct;' =&gt; '&amp;#x02210;',
+	  '&amp;counterclockwisecontourintegral;' =&gt; '&amp;#x02233;',
+	  '&amp;cupcap;' =&gt; '&amp;#x0224d;',
+	  '&amp;curlyeqprec;' =&gt; '&amp;#x022de;',
+	  '&amp;curlyeqsucc;' =&gt; '&amp;#x022df;',
+	  '&amp;curlyvee;' =&gt; '&amp;#x022ce;',
+	  '&amp;curlywedge;' =&gt; '&amp;#x022cf;',
+	  '&amp;curvearrowleft;' =&gt; '&amp;#x021b6;',
+	  '&amp;curvearrowright;' =&gt; '&amp;#x021b7;',
+	  '&amp;dbkarow;' =&gt; '&amp;#x0290f;',
+	  '&amp;ddagger;' =&gt; '&amp;#x02021;',
+	  '&amp;ddotseq;' =&gt; '&amp;#x02a77;',
+	  '&amp;del;' =&gt; '&amp;#x02207;',
+	  '&amp;diacriticalacute;' =&gt; '&amp;#x000b4;',
+	  '&amp;diacriticaldot;' =&gt; '&amp;#x002d9;',
+	  '&amp;diacriticaldoubleacute;' =&gt; '&amp;#x002dd;',
+	  '&amp;diacriticalgrave;' =&gt; '&amp;#x00060;',
+	  '&amp;diacriticaltilde;' =&gt; '&amp;#x002dc;',
+	  '&amp;diamond;' =&gt; '&amp;#x022c4;',
+	  '&amp;diamond;' =&gt; '&amp;#x022c4;',
+	  '&amp;diamondsuit;' =&gt; '&amp;#x02666;',
+	  '&amp;differentiald;' =&gt; '&amp;#x02146;',
+	  '&amp;digamma;' =&gt; '&amp;#x003dd;',
+	  '&amp;div;' =&gt; '&amp;#x000f7;',
+	  '&amp;divideontimes;' =&gt; '&amp;#x022c7;',
+	  '&amp;doteq;' =&gt; '&amp;#x02250;',
+	  '&amp;doteqdot;' =&gt; '&amp;#x02251;',
+	  '&amp;dotequal;' =&gt; '&amp;#x02250;',
+	  '&amp;dotminus;' =&gt; '&amp;#x02238;',
+	  '&amp;dotplus;' =&gt; '&amp;#x02214;',
+	  '&amp;dotsquare;' =&gt; '&amp;#x022a1;',
+	  '&amp;doublebarwedge;' =&gt; '&amp;#x02306;',
+	  '&amp;doublecontourintegral;' =&gt; '&amp;#x0222f;',
+	  '&amp;doubledot;' =&gt; '&amp;#x000a8;',
+	  '&amp;doubledownarrow;' =&gt; '&amp;#x021d3;',
+	  '&amp;doubleleftarrow;' =&gt; '&amp;#x021d0;',
+	  '&amp;doubleleftrightarrow;' =&gt; '&amp;#x021d4;',
+	  '&amp;doublelefttee;' =&gt; '&amp;#x02ae4;',
+	  '&amp;doublelongleftarrow;' =&gt; '&amp;#x027f8;',
+	  '&amp;doublelongleftrightarrow;' =&gt; '&amp;#x027fa;',
+	  '&amp;doublelongrightarrow;' =&gt; '&amp;#x027f9;',
+	  '&amp;doublerightarrow;' =&gt; '&amp;#x021d2;',
+	  '&amp;doublerighttee;' =&gt; '&amp;#x022a8;',
+	  '&amp;doubleuparrow;' =&gt; '&amp;#x021d1;',
+	  '&amp;doubleupdownarrow;' =&gt; '&amp;#x021d5;',
+	  '&amp;doubleverticalbar;' =&gt; '&amp;#x02225;',
+	  '&amp;downarrow;' =&gt; '&amp;#x02193;',
+	  '&amp;downarrow;' =&gt; '&amp;#x021d3;',
+	  '&amp;downarrow;' =&gt; '&amp;#x02193;',
+	  '&amp;downarrowuparrow;' =&gt; '&amp;#x021f5;',
+	  '&amp;downdownarrows;' =&gt; '&amp;#x021ca;',
+	  '&amp;downharpoonleft;' =&gt; '&amp;#x021c3;',
+	  '&amp;downharpoonright;' =&gt; '&amp;#x021c2;',
+	  '&amp;downleftvector;' =&gt; '&amp;#x021bd;',
+	  '&amp;downrightvector;' =&gt; '&amp;#x021c1;',
+	  '&amp;downtee;' =&gt; '&amp;#x022a4;',
+	  '&amp;downteearrow;' =&gt; '&amp;#x021a7;',
+	  '&amp;drbkarow;' =&gt; '&amp;#x02910;',
+	  '&amp;element;' =&gt; '&amp;#x02208;',
+	  '&amp;emptyset;' =&gt; '&amp;#x02205;',
+	  '&amp;eqcirc;' =&gt; '&amp;#x02256;',
+	  '&amp;eqcolon;' =&gt; '&amp;#x02255;',
+	  '&amp;eqsim;' =&gt; '&amp;#x02242;',
+	  '&amp;eqslantgtr;' =&gt; '&amp;#x02a96;',
+	  '&amp;eqslantless;' =&gt; '&amp;#x02a95;',
+	  '&amp;equaltilde;' =&gt; '&amp;#x02242;',
+	  '&amp;equilibrium;' =&gt; '&amp;#x021cc;',
+	  '&amp;exists;' =&gt; '&amp;#x02203;',
+	  '&amp;expectation;' =&gt; '&amp;#x02130;',
+	  '&amp;exponentiale;' =&gt; '&amp;#x02147;',
+	  '&amp;exponentiale;' =&gt; '&amp;#x02147;',
+	  '&amp;fallingdotseq;' =&gt; '&amp;#x02252;',
+	  '&amp;forall;' =&gt; '&amp;#x02200;',
+	  '&amp;fouriertrf;' =&gt; '&amp;#x02131;',
+	  '&amp;geq;' =&gt; '&amp;#x02265;',
+	  '&amp;geqq;' =&gt; '&amp;#x02267;',
+	  '&amp;geqslant;' =&gt; '&amp;#x02a7e;',
+	  '&amp;gg;' =&gt; '&amp;#x0226b;',
+	  '&amp;ggg;' =&gt; '&amp;#x022d9;',
+	  '&amp;gnapprox;' =&gt; '&amp;#x02a8a;',
+	  '&amp;gneq;' =&gt; '&amp;#x02a88;',
+	  '&amp;gneqq;' =&gt; '&amp;#x02269;',
+	  '&amp;greaterequal;' =&gt; '&amp;#x02265;',
+	  '&amp;greaterequalless;' =&gt; '&amp;#x022db;',
+	  '&amp;greaterfullequal;' =&gt; '&amp;#x02267;',
+	  '&amp;greaterless;' =&gt; '&amp;#x02277;',
+	  '&amp;greaterslantequal;' =&gt; '&amp;#x02a7e;',
+	  '&amp;greatertilde;' =&gt; '&amp;#x02273;',
+	  '&amp;gtrapprox;' =&gt; '&amp;#x02a86;',
+	  '&amp;gtrdot;' =&gt; '&amp;#x022d7;',
+	  '&amp;gtreqless;' =&gt; '&amp;#x022db;',
+	  '&amp;gtreqqless;' =&gt; '&amp;#x02a8c;',
+	  '&amp;gtrless;' =&gt; '&amp;#x02277;',
+	  '&amp;gtrsim;' =&gt; '&amp;#x02273;',
+	  '&amp;gvertneqq;' =&gt; '&amp;#x02269;&amp;#x0fe00;',
+	  '&amp;hacek;' =&gt; '&amp;#x002c7;',
+	  '&amp;hbar;' =&gt; '&amp;#x0210f;',
+	  '&amp;heartsuit;' =&gt; '&amp;#x02665;',
+	  '&amp;hilbertspace;' =&gt; '&amp;#x0210b;',
+	  '&amp;hksearow;' =&gt; '&amp;#x02925;',
+	  '&amp;hkswarow;' =&gt; '&amp;#x02926;',
+	  '&amp;hookleftarrow;' =&gt; '&amp;#x021a9;',
+	  '&amp;hookrightarrow;' =&gt; '&amp;#x021aa;',
+	  '&amp;hslash;' =&gt; '&amp;#x0210f;',
+	  '&amp;humpdownhump;' =&gt; '&amp;#x0224e;',
+	  '&amp;humpequal;' =&gt; '&amp;#x0224f;',
+	  '&amp;iiiint;' =&gt; '&amp;#x02a0c;',
+	  '&amp;iiint;' =&gt; '&amp;#x0222d;',
+	  '&amp;im;' =&gt; '&amp;#x02111;',
+	  '&amp;imaginaryi;' =&gt; '&amp;#x02148;',
+	  '&amp;imagline;' =&gt; '&amp;#x02110;',
+	  '&amp;imagpart;' =&gt; '&amp;#x02111;',
+	  '&amp;implies;' =&gt; '&amp;#x021d2;',
+	  '&amp;in;' =&gt; '&amp;#x02208;',
+	  '&amp;integers;' =&gt; '&amp;#x02124;',
+	  '&amp;integral;' =&gt; '&amp;#x0222b;',
+	  '&amp;intercal;' =&gt; '&amp;#x022ba;',
+	  '&amp;intersection;' =&gt; '&amp;#x022c2;',
+	  '&amp;intprod;' =&gt; '&amp;#x02a3c;',
+	  '&amp;invisiblecomma;' =&gt; '&amp;#x02063;',
+	  '&amp;invisibletimes;' =&gt; '&amp;#x02062;',
+	  '&amp;langle;' =&gt; '&amp;#x02329;',
+	  '&amp;laplacetrf;' =&gt; '&amp;#x02112;',
+	  '&amp;lbrace;' =&gt; '&amp;#x0007b;',
+	  '&amp;lbrack;' =&gt; '&amp;#x0005b;',
+	  '&amp;leftanglebracket;' =&gt; '&amp;#x02329;',
+	  '&amp;leftarrow;' =&gt; '&amp;#x02190;',
+	  '&amp;leftarrow;' =&gt; '&amp;#x021d0;',
+	  '&amp;leftarrow;' =&gt; '&amp;#x02190;',
+	  '&amp;leftarrowbar;' =&gt; '&amp;#x021e4;',
+	  '&amp;leftarrowrightarrow;' =&gt; '&amp;#x021c6;',
+	  '&amp;leftarrowtail;' =&gt; '&amp;#x021a2;',
+	  '&amp;leftceiling;' =&gt; '&amp;#x02308;',
+	  '&amp;leftdoublebracket;' =&gt; '&amp;#x0301a;',
+	  '&amp;leftdownvector;' =&gt; '&amp;#x021c3;',
+	  '&amp;leftfloor;' =&gt; '&amp;#x0230a;',
+	  '&amp;leftharpoondown;' =&gt; '&amp;#x021bd;',
+	  '&amp;leftharpoonup;' =&gt; '&amp;#x021bc;',
+	  '&amp;leftleftarrows;' =&gt; '&amp;#x021c7;',
+	  '&amp;leftrightarrow;' =&gt; '&amp;#x02194;',
+	  '&amp;leftrightarrow;' =&gt; '&amp;#x021d4;',
+	  '&amp;leftrightarrow;' =&gt; '&amp;#x02194;',
+	  '&amp;leftrightarrows;' =&gt; '&amp;#x021c6;',
+	  '&amp;leftrightharpoons;' =&gt; '&amp;#x021cb;',
+	  '&amp;leftrightsquigarrow;' =&gt; '&amp;#x021ad;',
+	  '&amp;lefttee;' =&gt; '&amp;#x022a3;',
+	  '&amp;leftteearrow;' =&gt; '&amp;#x021a4;',
+	  '&amp;leftthreetimes;' =&gt; '&amp;#x022cb;',
+	  '&amp;lefttriangle;' =&gt; '&amp;#x022b2;',
+	  '&amp;lefttriangleequal;' =&gt; '&amp;#x022b4;',
+	  '&amp;leftupvector;' =&gt; '&amp;#x021bf;',
+	  '&amp;leftvector;' =&gt; '&amp;#x021bc;',
+	  '&amp;leq;' =&gt; '&amp;#x02264;',
+	  '&amp;leqq;' =&gt; '&amp;#x02266;',
+	  '&amp;leqslant;' =&gt; '&amp;#x02a7d;',
+	  '&amp;lessapprox;' =&gt; '&amp;#x02a85;',
+	  '&amp;lessdot;' =&gt; '&amp;#x022d6;',
+	  '&amp;lesseqgtr;' =&gt; '&amp;#x022da;',
+	  '&amp;lesseqqgtr;' =&gt; '&amp;#x02a8b;',
+	  '&amp;lessequalgreater;' =&gt; '&amp;#x022da;',
+	  '&amp;lessfullequal;' =&gt; '&amp;#x02266;',
+	  '&amp;lessgreater;' =&gt; '&amp;#x02276;',
+	  '&amp;lessgtr;' =&gt; '&amp;#x02276;',
+	  '&amp;lesssim;' =&gt; '&amp;#x02272;',
+	  '&amp;lessslantequal;' =&gt; '&amp;#x02a7d;',
+	  '&amp;lesstilde;' =&gt; '&amp;#x02272;',
+	  '&amp;ll;' =&gt; '&amp;#x0226a;',
+	  '&amp;llcorner;' =&gt; '&amp;#x0231e;',
+	  '&amp;lleftarrow;' =&gt; '&amp;#x021da;',
+	  '&amp;lmoustache;' =&gt; '&amp;#x023b0;',
+	  '&amp;lnapprox;' =&gt; '&amp;#x02a89;',
+	  '&amp;lneq;' =&gt; '&amp;#x02a87;',
+	  '&amp;lneqq;' =&gt; '&amp;#x02268;',
+	  '&amp;longleftarrow;' =&gt; '&amp;#x027f5;',
+	  '&amp;longleftarrow;' =&gt; '&amp;#x027f8;',
+	  '&amp;longleftarrow;' =&gt; '&amp;#x027f5;',
+	  '&amp;longleftrightarrow;' =&gt; '&amp;#x027f7;',
+	  '&amp;longleftrightarrow;' =&gt; '&amp;#x027fa;',
+	  '&amp;longleftrightarrow;' =&gt; '&amp;#x027f7;',
+	  '&amp;longmapsto;' =&gt; '&amp;#x027fc;',
+	  '&amp;longrightarrow;' =&gt; '&amp;#x027f6;',
+	  '&amp;longrightarrow;' =&gt; '&amp;#x027f9;',
+	  '&amp;longrightarrow;' =&gt; '&amp;#x027f6;',
+	  '&amp;looparrowleft;' =&gt; '&amp;#x021ab;',
+	  '&amp;looparrowright;' =&gt; '&amp;#x021ac;',
+	  '&amp;lowerleftarrow;' =&gt; '&amp;#x02199;',
+	  '&amp;lowerrightarrow;' =&gt; '&amp;#x02198;',
+	  '&amp;lozenge;' =&gt; '&amp;#x025ca;',
+	  '&amp;lrcorner;' =&gt; '&amp;#x0231f;',
+	  '&amp;lsh;' =&gt; '&amp;#x021b0;',
+	  '&amp;lvertneqq;' =&gt; '&amp;#x02268;&amp;#x0fe00;',
+	  '&amp;maltese;' =&gt; '&amp;#x02720;',
+	  '&amp;mapsto;' =&gt; '&amp;#x021a6;',
+	  '&amp;measuredangle;' =&gt; '&amp;#x02221;',
+	  '&amp;mellintrf;' =&gt; '&amp;#x02133;',
+	  '&amp;minusplus;' =&gt; '&amp;#x02213;',
+	  '&amp;mp;' =&gt; '&amp;#x02213;',
+	  '&amp;multimap;' =&gt; '&amp;#x022b8;',
+	  '&amp;napprox;' =&gt; '&amp;#x02249;',
+	  '&amp;natural;' =&gt; '&amp;#x0266e;',
+	  '&amp;naturals;' =&gt; '&amp;#x02115;',
+	  '&amp;nearrow;' =&gt; '&amp;#x02197;',
+	  '&amp;negativemediumspace;' =&gt; '&amp;#x0200b;',
+	  '&amp;negativethickspace;' =&gt; '&amp;#x0200b;',
+	  '&amp;negativethinspace;' =&gt; '&amp;#x0200b;',
+	  '&amp;negativeverythinspace;' =&gt; '&amp;#x0200b;',
+	  '&amp;nestedgreatergreater;' =&gt; '&amp;#x0226b;',
+	  '&amp;nestedlessless;' =&gt; '&amp;#x0226a;',
+	  '&amp;nexists;' =&gt; '&amp;#x02204;',
+	  '&amp;ngeq;' =&gt; '&amp;#x02271;',
+	  '&amp;ngeqq;' =&gt; '&amp;#x02267;&amp;#x00338;',
+	  '&amp;ngeqslant;' =&gt; '&amp;#x02a7e;&amp;#x00338;',
+	  '&amp;ngtr;' =&gt; '&amp;#x0226f;',
+	  '&amp;nleftarrow;' =&gt; '&amp;#x021cd;',
+	  '&amp;nleftarrow;' =&gt; '&amp;#x0219a;',
+	  '&amp;nleftrightarrow;' =&gt; '&amp;#x021ce;',
+	  '&amp;nleftrightarrow;' =&gt; '&amp;#x021ae;',
+	  '&amp;nleq;' =&gt; '&amp;#x02270;',
+	  '&amp;nleqq;' =&gt; '&amp;#x02266;&amp;#x00338;',
+	  '&amp;nleqslant;' =&gt; '&amp;#x02a7d;&amp;#x00338;',
+	  '&amp;nless;' =&gt; '&amp;#x0226e;',
+	  '&amp;nonbreakingspace;' =&gt; '&amp;#x000a0;',
+	  '&amp;notcongruent;' =&gt; '&amp;#x02262;',
+	  '&amp;notdoubleverticalbar;' =&gt; '&amp;#x02226;',
+	  '&amp;notelement;' =&gt; '&amp;#x02209;',
+	  '&amp;notequal;' =&gt; '&amp;#x02260;',
+	  '&amp;notequaltilde;' =&gt; '&amp;#x02242;&amp;#x00338;',
+	  '&amp;notexists;' =&gt; '&amp;#x02204;',
+	  '&amp;notgreater;' =&gt; '&amp;#x0226f;',
+	  '&amp;notgreaterequal;' =&gt; '&amp;#x02271;',
+	  '&amp;notgreaterfullequal;' =&gt; '&amp;#x02266;&amp;#x00338;',
+	  '&amp;notgreatergreater;' =&gt; '&amp;#x0226b;&amp;#x00338;',
+	  '&amp;notgreaterless;' =&gt; '&amp;#x02279;',
+	  '&amp;notgreaterslantequal;' =&gt; '&amp;#x02a7e;&amp;#x00338;',
+	  '&amp;notgreatertilde;' =&gt; '&amp;#x02275;',
+	  '&amp;nothumpdownhump;' =&gt; '&amp;#x0224e;&amp;#x00338;',
+	  '&amp;notlefttriangle;' =&gt; '&amp;#x022ea;',
+	  '&amp;notlefttriangleequal;' =&gt; '&amp;#x022ec;',
+	  '&amp;notless;' =&gt; '&amp;#x0226e;',
+	  '&amp;notlessequal;' =&gt; '&amp;#x02270;',
+	  '&amp;notlessgreater;' =&gt; '&amp;#x02278;',
+	  '&amp;notlessless;' =&gt; '&amp;#x0226a;&amp;#x00338;',
+	  '&amp;notlessslantequal;' =&gt; '&amp;#x02a7d;&amp;#x00338;',
+	  '&amp;notlesstilde;' =&gt; '&amp;#x02274;',
+	  '&amp;notprecedes;' =&gt; '&amp;#x02280;',
+	  '&amp;notprecedesequal;' =&gt; '&amp;#x02aaf;&amp;#x00338;',
+	  '&amp;notprecedesslantequal;' =&gt; '&amp;#x022e0;',
+	  '&amp;notreverseelement;' =&gt; '&amp;#x0220c;',
+	  '&amp;notrighttriangle;' =&gt; '&amp;#x022eb;',
+	  '&amp;notrighttriangleequal;' =&gt; '&amp;#x022ed;',
+	  '&amp;notsquaresubsetequal;' =&gt; '&amp;#x022e2;',
+	  '&amp;notsquaresupersetequal;' =&gt; '&amp;#x022e3;',
+	  '&amp;notsubset;' =&gt; '&amp;#x02282;&amp;#x020d2;',
+	  '&amp;notsubsetequal;' =&gt; '&amp;#x02288;',
+	  '&amp;notsucceeds;' =&gt; '&amp;#x02281;',
+	  '&amp;notsucceedsequal;' =&gt; '&amp;#x02ab0;&amp;#x00338;',
+	  '&amp;notsucceedsslantequal;' =&gt; '&amp;#x022e1;',
+	  '&amp;notsuperset;' =&gt; '&amp;#x02283;&amp;#x020d2;',
+	  '&amp;notsupersetequal;' =&gt; '&amp;#x02289;',
+	  '&amp;nottilde;' =&gt; '&amp;#x02241;',
+	  '&amp;nottildeequal;' =&gt; '&amp;#x02244;',
+	  '&amp;nottildefullequal;' =&gt; '&amp;#x02247;',
+	  '&amp;nottildetilde;' =&gt; '&amp;#x02249;',
+	  '&amp;notverticalbar;' =&gt; '&amp;#x02224;',
+	  '&amp;nparallel;' =&gt; '&amp;#x02226;',
+	  '&amp;nprec;' =&gt; '&amp;#x02280;',
+	  '&amp;npreceq;' =&gt; '&amp;#x02aaf;&amp;#x00338;',
+	  '&amp;nrightarrow;' =&gt; '&amp;#x021cf;',
+	  '&amp;nrightarrow;' =&gt; '&amp;#x0219b;',
+	  '&amp;nshortmid;' =&gt; '&amp;#x02224;',
+	  '&amp;nshortparallel;' =&gt; '&amp;#x02226;',
+	  '&amp;nsimeq;' =&gt; '&amp;#x02244;',
+	  '&amp;nsubset;' =&gt; '&amp;#x02282;&amp;#x020d2;',
+	  '&amp;nsubseteq;' =&gt; '&amp;#x02288;',
+	  '&amp;nsubseteqq;' =&gt; '&amp;#x02ac5;&amp;#x00338;',
+	  '&amp;nsucc;' =&gt; '&amp;#x02281;',
+	  '&amp;nsucceq;' =&gt; '&amp;#x02ab0;&amp;#x00338;',
+	  '&amp;nsupset;' =&gt; '&amp;#x02283;&amp;#x020d2;',
+	  '&amp;nsupseteq;' =&gt; '&amp;#x02289;',
+	  '&amp;nsupseteqq;' =&gt; '&amp;#x02ac6;&amp;#x00338;',
+	  '&amp;ntriangleleft;' =&gt; '&amp;#x022ea;',
+	  '&amp;ntrianglelefteq;' =&gt; '&amp;#x022ec;',
+	  '&amp;ntriangleright;' =&gt; '&amp;#x022eb;',
+	  '&amp;ntrianglerighteq;' =&gt; '&amp;#x022ed;',
+	  '&amp;nwarrow;' =&gt; '&amp;#x02196;',
+	  '&amp;oint;' =&gt; '&amp;#x0222e;',
+	  '&amp;opencurlydoublequote;' =&gt; '&amp;#x0201c;',
+	  '&amp;opencurlyquote;' =&gt; '&amp;#x02018;',
+	  '&amp;orderof;' =&gt; '&amp;#x02134;',
+	  '&amp;parallel;' =&gt; '&amp;#x02225;',
+	  '&amp;partiald;' =&gt; '&amp;#x02202;',
+	  '&amp;pitchfork;' =&gt; '&amp;#x022d4;',
+	  '&amp;plusminus;' =&gt; '&amp;#x000b1;',
+	  '&amp;pm;' =&gt; '&amp;#x000b1;',
+	  '&amp;poincareplane;' =&gt; '&amp;#x0210c;',
+	  '&amp;prec;' =&gt; '&amp;#x0227a;',
+	  '&amp;precapprox;' =&gt; '&amp;#x02ab7;',
+	  '&amp;preccurlyeq;' =&gt; '&amp;#x0227c;',
+	  '&amp;precedes;' =&gt; '&amp;#x0227a;',
+	  '&amp;precedesequal;' =&gt; '&amp;#x02aaf;',
+	  '&amp;precedesslantequal;' =&gt; '&amp;#x0227c;',
+	  '&amp;precedestilde;' =&gt; '&amp;#x0227e;',
+	  '&amp;preceq;' =&gt; '&amp;#x02aaf;',
+	  '&amp;precnapprox;' =&gt; '&amp;#x02ab9;',
+	  '&amp;precneqq;' =&gt; '&amp;#x02ab5;',
+	  '&amp;precnsim;' =&gt; '&amp;#x022e8;',
+	  '&amp;precsim;' =&gt; '&amp;#x0227e;',
+	  '&amp;primes;' =&gt; '&amp;#x02119;',
+	  '&amp;proportion;' =&gt; '&amp;#x02237;',
+	  '&amp;proportional;' =&gt; '&amp;#x0221d;',
+	  '&amp;propto;' =&gt; '&amp;#x0221d;',
+	  '&amp;quaternions;' =&gt; '&amp;#x0210d;',
+	  '&amp;questeq;' =&gt; '&amp;#x0225f;',
+	  '&amp;rangle;' =&gt; '&amp;#x0232a;',
+	  '&amp;rationals;' =&gt; '&amp;#x0211a;',
+	  '&amp;rbrace;' =&gt; '&amp;#x0007d;',
+	  '&amp;rbrack;' =&gt; '&amp;#x0005d;',
+	  '&amp;re;' =&gt; '&amp;#x0211c;',
+	  '&amp;realine;' =&gt; '&amp;#x0211b;',
+	  '&amp;realpart;' =&gt; '&amp;#x0211c;',
+	  '&amp;reals;' =&gt; '&amp;#x0211d;',
+	  '&amp;reverseelement;' =&gt; '&amp;#x0220b;',
+	  '&amp;reverseequilibrium;' =&gt; '&amp;#x021cb;',
+	  '&amp;reverseupequilibrium;' =&gt; '&amp;#x0296f;',
+	  '&amp;rightanglebracket;' =&gt; '&amp;#x0232a;',
+	  '&amp;rightarrow;' =&gt; '&amp;#x02192;',
+	  '&amp;rightarrow;' =&gt; '&amp;#x021d2;',
+	  '&amp;rightarrow;' =&gt; '&amp;#x02192;',
+	  '&amp;rightarrowbar;' =&gt; '&amp;#x021e5;',
+	  '&amp;rightarrowleftarrow;' =&gt; '&amp;#x021c4;',
+	  '&amp;rightarrowtail;' =&gt; '&amp;#x021a3;',
+	  '&amp;rightceiling;' =&gt; '&amp;#x02309;',
+	  '&amp;rightdoublebracket;' =&gt; '&amp;#x0301b;',
+	  '&amp;rightdownvector;' =&gt; '&amp;#x021c2;',
+	  '&amp;rightfloor;' =&gt; '&amp;#x0230b;',
+	  '&amp;rightharpoondown;' =&gt; '&amp;#x021c1;',
+	  '&amp;rightharpoonup;' =&gt; '&amp;#x021c0;',
+	  '&amp;rightleftarrows;' =&gt; '&amp;#x021c4;',
+	  '&amp;rightleftharpoons;' =&gt; '&amp;#x021cc;',
+	  '&amp;rightrightarrows;' =&gt; '&amp;#x021c9;',
+	  '&amp;rightsquigarrow;' =&gt; '&amp;#x0219d;',
+	  '&amp;righttee;' =&gt; '&amp;#x022a2;',
+	  '&amp;rightteearrow;' =&gt; '&amp;#x021a6;',
+	  '&amp;rightthreetimes;' =&gt; '&amp;#x022cc;',
+	  '&amp;righttriangle;' =&gt; '&amp;#x022b3;',
+	  '&amp;righttriangleequal;' =&gt; '&amp;#x022b5;',
+	  '&amp;rightupvector;' =&gt; '&amp;#x021be;',
+	  '&amp;rightvector;' =&gt; '&amp;#x021c0;',
+	  '&amp;risingdotseq;' =&gt; '&amp;#x02253;',
+	  '&amp;rmoustache;' =&gt; '&amp;#x023b1;',
+	  '&amp;rrightarrow;' =&gt; '&amp;#x021db;',
+	  '&amp;rsh;' =&gt; '&amp;#x021b1;',
+	  '&amp;searrow;' =&gt; '&amp;#x02198;',
+	  '&amp;setminus;' =&gt; '&amp;#x02216;',
+	  '&amp;shortdownarrow;' =&gt; '&amp;#x02193;',
+	  '&amp;shortleftarrow;' =&gt; '&amp;#x02190;',
+	  '&amp;shortmid;' =&gt; '&amp;#x02223;',
+	  '&amp;shortparallel;' =&gt; '&amp;#x02225;',
+	  '&amp;shortrightarrow;' =&gt; '&amp;#x02192;',
+	  '&amp;shortuparrow;' =&gt; '&amp;#x02191;',
+	  '&amp;simeq;' =&gt; '&amp;#x02243;',
+	  '&amp;smallcircle;' =&gt; '&amp;#x02218;',
+	  '&amp;smallsetminus;' =&gt; '&amp;#x02216;',
+	  '&amp;spadesuit;' =&gt; '&amp;#x02660;',
+	  '&amp;sqrt;' =&gt; '&amp;#x0221a;',
+	  '&amp;sqsubset;' =&gt; '&amp;#x0228f;',
+	  '&amp;sqsubseteq;' =&gt; '&amp;#x02291;',
+	  '&amp;sqsupset;' =&gt; '&amp;#x02290;',
+	  '&amp;sqsupseteq;' =&gt; '&amp;#x02292;',
+	  '&amp;square;' =&gt; '&amp;#x025a1;',
+	  '&amp;squareintersection;' =&gt; '&amp;#x02293;',
+	  '&amp;squaresubset;' =&gt; '&amp;#x0228f;',
+	  '&amp;squaresubsetequal;' =&gt; '&amp;#x02291;',
+	  '&amp;squaresuperset;' =&gt; '&amp;#x02290;',
+	  '&amp;squaresupersetequal;' =&gt; '&amp;#x02292;',
+	  '&amp;squareunion;' =&gt; '&amp;#x02294;',
+	  '&amp;star;' =&gt; '&amp;#x022c6;',
+	  '&amp;straightepsilon;' =&gt; '&amp;#x003f5;',
+	  '&amp;straightphi;' =&gt; '&amp;#x003d5;',
+	  '&amp;subset;' =&gt; '&amp;#x022d0;',
+	  '&amp;subset;' =&gt; '&amp;#x02282;',
+	  '&amp;subseteq;' =&gt; '&amp;#x02286;',
+	  '&amp;subseteqq;' =&gt; '&amp;#x02ac5;',
+	  '&amp;subsetequal;' =&gt; '&amp;#x02286;',
+	  '&amp;subsetneq;' =&gt; '&amp;#x0228a;',
+	  '&amp;subsetneqq;' =&gt; '&amp;#x02acb;',
+	  '&amp;succ;' =&gt; '&amp;#x0227b;',
+	  '&amp;succapprox;' =&gt; '&amp;#x02ab8;',
+	  '&amp;succcurlyeq;' =&gt; '&amp;#x0227d;',
+	  '&amp;succeeds;' =&gt; '&amp;#x0227b;',
+	  '&amp;succeedsequal;' =&gt; '&amp;#x02ab0;',
+	  '&amp;succeedsslantequal;' =&gt; '&amp;#x0227d;',
+	  '&amp;succeedstilde;' =&gt; '&amp;#x0227f;',
+	  '&amp;succeq;' =&gt; '&amp;#x02ab0;',
+	  '&amp;succnapprox;' =&gt; '&amp;#x02aba;',
+	  '&amp;succneqq;' =&gt; '&amp;#x02ab6;',
+	  '&amp;succnsim;' =&gt; '&amp;#x022e9;',
+	  '&amp;succsim;' =&gt; '&amp;#x0227f;',
+	  '&amp;suchthat;' =&gt; '&amp;#x0220b;',
+	  '&amp;sum;' =&gt; '&amp;#x02211;',
+	  '&amp;superset;' =&gt; '&amp;#x02283;',
+	  '&amp;supersetequal;' =&gt; '&amp;#x02287;',
+	  '&amp;supset;' =&gt; '&amp;#x022d1;',
+	  '&amp;supset;' =&gt; '&amp;#x02283;',
+	  '&amp;supseteq;' =&gt; '&amp;#x02287;',
+	  '&amp;supseteqq;' =&gt; '&amp;#x02ac6;',
+	  '&amp;supsetneq;' =&gt; '&amp;#x0228b;',
+	  '&amp;supsetneqq;' =&gt; '&amp;#x02acc;',
+	  '&amp;swarrow;' =&gt; '&amp;#x02199;',
+	  '&amp;therefore;' =&gt; '&amp;#x02234;',
+	  '&amp;therefore;' =&gt; '&amp;#x02234;',
+	  '&amp;thickapprox;' =&gt; '&amp;#x02248;',
+	  '&amp;thicksim;' =&gt; '&amp;#x0223c;',
+	  '&amp;thinspace;' =&gt; '&amp;#x02009;',
+	  '&amp;tilde;' =&gt; '&amp;#x0223c;',
+	  '&amp;tildeequal;' =&gt; '&amp;#x02243;',
+	  '&amp;tildefullequal;' =&gt; '&amp;#x02245;',
+	  '&amp;tildetilde;' =&gt; '&amp;#x02248;',
+	  '&amp;toea;' =&gt; '&amp;#x02928;',
+	  '&amp;tosa;' =&gt; '&amp;#x02929;',
+	  '&amp;triangle;' =&gt; '&amp;#x025b5;',
+	  '&amp;triangledown;' =&gt; '&amp;#x025bf;',
+	  '&amp;triangleleft;' =&gt; '&amp;#x025c3;',
+	  '&amp;trianglelefteq;' =&gt; '&amp;#x022b4;',
+	  '&amp;triangleq;' =&gt; '&amp;#x0225c;',
+	  '&amp;triangleright;' =&gt; '&amp;#x025b9;',
+	  '&amp;trianglerighteq;' =&gt; '&amp;#x022b5;',
+	  '&amp;tripledot;' =&gt; '&amp;#x020db;',
+	  '&amp;twoheadleftarrow;' =&gt; '&amp;#x0219e;',
+	  '&amp;twoheadrightarrow;' =&gt; '&amp;#x021a0;',
+	  '&amp;ulcorner;' =&gt; '&amp;#x0231c;',
+	  '&amp;union;' =&gt; '&amp;#x022c3;',
+	  '&amp;unionplus;' =&gt; '&amp;#x0228e;',
+	  '&amp;uparrow;' =&gt; '&amp;#x02191;',
+	  '&amp;uparrow;' =&gt; '&amp;#x021d1;',
+	  '&amp;uparrow;' =&gt; '&amp;#x02191;',
+	  '&amp;uparrowdownarrow;' =&gt; '&amp;#x021c5;',
+	  '&amp;updownarrow;' =&gt; '&amp;#x02195;',
+	  '&amp;updownarrow;' =&gt; '&amp;#x021d5;',
+	  '&amp;updownarrow;' =&gt; '&amp;#x02195;',
+	  '&amp;upequilibrium;' =&gt; '&amp;#x0296e;',
+	  '&amp;upharpoonleft;' =&gt; '&amp;#x021bf;',
+	  '&amp;upharpoonright;' =&gt; '&amp;#x021be;',
+	  '&amp;upperleftarrow;' =&gt; '&amp;#x02196;',
+	  '&amp;upperrightarrow;' =&gt; '&amp;#x02197;',
+	  '&amp;upsilon;' =&gt; '&amp;#x003c5;',
+	  '&amp;uptee;' =&gt; '&amp;#x022a5;',
+	  '&amp;upteearrow;' =&gt; '&amp;#x021a5;',
+	  '&amp;upuparrows;' =&gt; '&amp;#x021c8;',
+	  '&amp;urcorner;' =&gt; '&amp;#x0231d;',
+	  '&amp;varepsilon;' =&gt; '&amp;#x003b5;',
+	  '&amp;varkappa;' =&gt; '&amp;#x003f0;',
+	  '&amp;varnothing;' =&gt; '&amp;#x02205;',
+	  '&amp;varphi;' =&gt; '&amp;#x003c6;',
+	  '&amp;varpi;' =&gt; '&amp;#x003d6;',
+	  '&amp;varpropto;' =&gt; '&amp;#x0221d;',
+	  '&amp;varrho;' =&gt; '&amp;#x003f1;',
+	  '&amp;varsigma;' =&gt; '&amp;#x003c2;',
+	  '&amp;varsubsetneq;' =&gt; '&amp;#x0228a;&amp;#x0fe00;',
+	  '&amp;varsubsetneqq;' =&gt; '&amp;#x02acb;&amp;#x0fe00;',
+	  '&amp;varsupsetneq;' =&gt; '&amp;#x0228b;&amp;#x0fe00;',
+	  '&amp;varsupsetneqq;' =&gt; '&amp;#x02acc;&amp;#x0fe00;',
+	  '&amp;vartheta;' =&gt; '&amp;#x003d1;',
+	  '&amp;vartriangleleft;' =&gt; '&amp;#x022b2;',
+	  '&amp;vartriangleright;' =&gt; '&amp;#x022b3;',
+	  '&amp;vee;' =&gt; '&amp;#x022c1;',
+	  '&amp;vee;' =&gt; '&amp;#x02228;',
+	  '&amp;vert;' =&gt; '&amp;#x02016;',
+	  '&amp;vert;' =&gt; '&amp;#x0007c;',
+	  '&amp;verticalbar;' =&gt; '&amp;#x02223;',
+	  '&amp;verticaltilde;' =&gt; '&amp;#x02240;',
+	  '&amp;verythinspace;' =&gt; '&amp;#x0200a;',
+	  '&amp;wedge;' =&gt; '&amp;#x022c0;',
+	  '&amp;wedge;' =&gt; '&amp;#x02227;',
+	  '&amp;wp;' =&gt; '&amp;#x02118;',
+	  '&amp;wr;' =&gt; '&amp;#x02240;',
+	  '&amp;zeetrf;' =&gt; '&amp;#x02128;'
+	);
+	
+		if ($mode=='rev') {
+			preg_match_all('#\&amp;\#(.*)\;#sU',$string,$entities);
+			$entities[0]=array_unique($entities[0]);
+			foreach($entities[0] as $v) {
+				if (in_array($v,$cr))
+					$string=str_replace( $v,array_search($v,$cr),$string);
+			}
+			return $string;	
+		}
+	
+		preg_match_all('#\&amp;(.*)\;#sU',$string,$entities);
+		$entities[0]=array_unique($entities[0]);
+		if (is_array($entities[0]) &amp;&amp; !empty($entities[0]))
+			foreach($entities[0] as $v) {
+			if (array_key_exists($v,$cr))
+				$string=(str_replace( $v,$cr[$v],$string));
+			}
+	
+	 return $string;
+	}
+}
+
+
+//
+// init
+//
+
+include_once $_AS['basedir'] . 'inc/class.articlesystem.php'; //Basisklasse
+include_once $_AS['basedir'] . 'inc/class.lang.php'; //Sprachobjekt
+
+$_AS['temp']=array();
+if (empty($mvars[800]))
+	$_AS['modkey']=$cms_mod['key'];
+else
+	$_AS['modkey']=as_cleanstring($mvars[800]);
+
+
+if ($mvars['1']=='2' &amp;&amp; $sess-&gt;name == 'sefrengo' &amp;&amp; ($view == 'preview' || $view == 'edit') || $mvars['1']=='1' ) {
+  $_AS['xml-gen-active'] = false;
+} else {
+  $_AS['xml-gen-active'] = true;
+
+}
+	
+$_AS['snippet_object'] = false;
+$_AS['snippet_replacement_found'] = 'unknown';
+
+//CMS Webrequest erstllen
+$_AS['cms_wr'] =&amp; $GLOBALS['sf_factory']-&gt;getObject('HTTP', 'WebRequest');
+
+//AdoDB initialtisieren
+$adodb =&amp; $GLOBALS['sf_factory']-&gt;getObject('DATABASE', 'Ado');
+
+//Articlesystem initializieren
+$_AS['artsys_obj'] = new Articlesystem;
+
+//Collectionklasse laden
+include_once $_AS['basedir'] . 'inc/class.articlecollection.php';
+include_once $_AS['basedir'] . 'inc/class.elementcollection.php';
+
+//Externe Variablen per CMS WebRequest holen
+#$_AS['idarticle'] = $_AS['cms_wr']-&gt;getVal($_AS['modkey'].'idarticle');
+
+//Einige Config-Vars direkt holen
+$_AS['config']['date'] = str_replace( array('{day}', '{month}', '{year}'), array('d', 'm', 'Y'),$mvars[10]);
+$_AS['config']['time'] = str_replace( array('{hour}', '{minute}'), array('%H', '%M'), $mvars[11]);
+$_AS['config']['time12'] = str_replace( array('{hour}', '{minute}'), array('%I', '%M'), $mvars[11]);
+$_AS['config']['time24'] = str_replace( array('{hour}', '{minute}'), array('%H', '%M'), $mvars[11]);
+
+$_AS['config']['day'] = $mvars[10210];
+$_AS['config']['month'] = $mvars[10211];
+$_AS['config']['year'] = $mvars[10212];
+
+// create category id&lt;-&gt;name array for later use
+$adodb =&amp; $GLOBALS['sf_factory']-&gt;getObject('DATABASE', 'Ado');
+$sql = &quot;SELECT idcategory, name FROM &quot;.$cfg_cms['db_table_prefix'].&quot;plug_&quot;.$_AS['db'].&quot;_category WHERE idclient='&quot;.$client.&quot;' AND idlang='&quot;.$lang.&quot;' ORDER BY name,hash ASC&quot;; // AND idlang='&quot;.$idlang.&quot;'
+$rs = $adodb-&gt;Execute($sql);
+$_AS['temp']['categories']=array();
+while (!$rs-&gt;EOF) {
+    $_AS['temp']['categories'][$rs-&gt;fields[0]] = $rs-&gt;fields[1];
+    $rs-&gt;MoveNext();
+}
+$rs-&gt;Close();
+// get langs
+$sql = &quot;SELECT
+            A.idlang, A.name
+        FROM
+            &quot;.$cfg_cms['db_table_prefix'].&quot;lang A
+        LEFT JOIN
+            &quot;.$cfg_cms['db_table_prefix'].&quot;clients_lang B USING(idlang)
+        WHERE
+            B.idclient='&quot;.$client.&quot;'
+        ORDER BY
+            idlang&quot;;
+$rs = $adodb-&gt;Execute($sql);
+$_AS['temp']['langs']=array();
+
+while (!$rs-&gt;EOF) {
+    $_AS['temp']['langs'][$rs-&gt;fields[0]] = $rs-&gt;fields[1];
+    $rs-&gt;MoveNext();
+}
+
+$rs-&gt;Close();
+
+
+
+//
+// routing preperation
+//
+
+$_AS['cat_routing']['routings'] = array();		
+$mvars[300]=trim($mvars[300]);
+if(!empty($mvars[300]) ) {
+
+	$_AS['cat_routing']['idcatside'] = $idcatside;
+	$_AS['cat_routing']['idcat'] = $idcat;
+
+	$_AS['cat_routing']['category_temp'] = '';
+	$_AS['cat_routing']['raw'] = trim( str_replace(' ', '',$mvars[300]));
+
+  $_AS['cat_routing']['raw_vals'] = explode(&quot;\n&quot;, $_AS['cat_routing']['raw']);
+
+  foreach ($_AS['cat_routing']['raw_vals'] AS $v) {
+  	$v=trim($v);
+    $_AS['cat_routing_pieces'] = explode('&gt;', $v);
+    $_AS['cat_routing']['routings'][ $_AS['cat_routing_pieces']['0'] ] = $_AS['cat_routing_pieces']['1'];
+  }
+  
+	//source idcatside
+	if (array_key_exists('idcatside:'.$idcatside, $_AS['cat_routing']['routings'])) {
+	  //idcatside to as cat
+		$_AS['cat_routing']['category_temp'] = $_AS['cat_routing']['routings']['idcatside:'.$idcatside];
+		if ($_AS['cat_routing']['category_temp'] &gt; 0) 
+		  $_AS['routed']['category'] = $_AS['cat_routing']['category_temp'];
+	// source idcat
+	} else if (array_key_exists('idcat:'.$idcat, $_AS['cat_routing']['routings'])) { 
+	  //idcat to as cat
+	  $_AS['cat_routing']['category_temp'] = $_AS['cat_routing']['routings']['idcat:'.$idcat];
+	  if ($_AS['cat_routing']['category_temp'] &gt; 0) 
+			$_AS['routed']['category'] = $_AS['cat_routing']['category_temp'];
+	}
+
+}
+
+//
+// sorting preperation
+//
+$mvars[400]=trim($mvars[400]);
+if(!empty($mvars[400])) {
+
+	$_AS['sorting']['array'] = array();		
+
+	$_AS['sorting']['raw'] = trim( str_replace(' ', '',$mvars[400]));
+
+  $_AS['sorting']['raw_vals'] = explode(&quot;\n&quot;, $_AS['sorting']['raw']);
+  foreach ($_AS['sorting']['raw_vals'] AS $v) {
+    $_AS['sorting_pieces'] = explode('&gt;', $v);
+    
+    if (strpos($_AS['sorting_pieces']['0'],'date')!==false || strpos($_AS['sorting_pieces']['0'],'time'))
+    	$_AS['sorting_pieces']['0']='article_'.$_AS['sorting_pieces']['0'];
+
+    if (strpos($_AS['sorting_pieces']['0'],'category')!==false)
+    	$_AS['sorting_pieces']['0']='id'.$_AS['sorting_pieces']['0'];
+  
+    $_AS['sorting']['array'][$_AS['sorting_pieces']['0']]=$_AS['sorting_pieces']['1'];
+  }
+
+}
+
+//
+// get current category
+//
+
+if (!empty($_AS['routed']['category']) &amp;&amp; empty($mvars[302]))
+	$_AS['temp']['category']=$_AS['routed']['category'];
+else {
+	if (!empty($mvars[8]))
+		$_AS['temp']['category']=$mvars[8];
+#	$_AS['temp']['category']=implode(',',array_flip($_AS['temp']['categories']));
+}
+
+$_AS['config']['startmonth'] = date(&quot;m&quot;);
+
+$_AS['config']['monthback'] = -1;
+$_AS['config_static']['monthback']=-1;
+
+
+//
+// create category strings
+//
+
+$_AS['cat_str']	= '';
+if (strpos($_AS['temp']['category'],',')!==false) {
+	$_AS['cat_str_arr']=array();
+	foreach(array_filter(explode(',',$_AS['temp']['category'])) as $v)
+		$_AS['cat_str_arr'][]=$_AS['temp']['categories'][$v];
+
+	$_AS['cat_str']=implode(', ',$_AS['cat_str_arr']);
+	$_AS['cat_str_fn']=implode('-',$_AS['cat_str_arr']);
+} elseif ($_AS['temp']['category']!='')	{			
+  $_AS['cat_str']= $_AS['temp']['categories'][$_AS['temp']['category']];
+  $_AS['cat_str_fn']=$_AS['cat_str'];
+}
+
+//
+// create filename
+//
+
+$_AS['file']=str_replace( array(
+																'{category_id}',
+																'{category_name}',
+																'{lang_id}',
+																'{lang_name}'
+																),
+													array (
+																str_replace(',','-',$_AS['temp']['category']),
+																$_AS['cat_str_fn'],
+																$lang,
+																$_AS['temp']['langs'][$lang]
+																),
+													$mvars[900]);
+
+//
+// get modified time
+//
+if($_AS['xml-gen-active'])
+	if (is_file($cfg_client['path'].$_AS['file']))
+		$_AS['file_modified']=@filemtime($cfg_client['path'].$_AS['file']);
+
+	
+
+
+//
+// start creation process
+//
+if($_AS['xml-gen-active'])
+	if($_AS['file_modified']+($mvars[480]*60)&lt;mktime() ||
+	 !empty($mvars[4]) ||
+	 !empty($mvars[700]) ||
+	 	empty($_AS['file_modified'])){
+	
+
+	  //init
+	  $_AS['collection'] = new ArticleCollection();
+		$_AS['elements'] = new ArticleElements;
+		
+		$_AS['collection']-&gt;setLegal(mktime(date('H'),date('i'),0,date('m'),date('d'),date('Y')));
+			
+		// set category
+		if(!empty($_AS['temp']['category'])) 
+	  		$_AS['collection']-&gt;setIdcategory($_AS['temp']['category']);
+	
+	
+	
+	  //Offline geschaltete Termine anzeigen? NEIN!
+	  $_AS['collection']-&gt;setHideOffline(true);
+	
+	
+		$_AS['timestamp_rangestart']=mktime(0,0,0,0,0,1971);	
+		if (empty($mvars[3])){
+			$_AS['timestamp_rangeend']	=	mktime(
+																						23,59,59,
+																						date('m'),
+																						date('d'),
+																						date('Y')
+																					);
+		} else {
+			$_AS['timestamp_rangeend']	=	mktime(
+																						date('H'),date('i'),59,
+																						date('m'),
+																						date('d'),
+																						date('Y')
+																					);
+		}
+	
+		$_AS['collection']-&gt;setDateRange($_AS['timestamp_rangestart'],$_AS['timestamp_rangeend']);
+		$_AS['timestamp_rangestart']='';
+		$_AS['timestamp_rangeend']='';
+	
+		$_AS['collection']-&gt;setSorting( $_AS['sorting']['array']);
+
+		if (!empty($mvars['48']))
+			$_AS['collection']-&gt;setLimit($mvars['48'],0);				
+
+	  $_AS['collection']-&gt;generate();
+	
+		$_AS['config']['day'] = $mvars[10110];
+		$_AS['config']['month'] = $mvars[10111];
+		$_AS['config']['year'] = $mvars[10112];
+		$_AS['config']['day2'] = $mvars[11110];
+		$_AS['config']['month2'] = $mvars[11111];
+
+		$_AS['list2']['row'] = array();
+		$_AS['list1']['row'] = array();
+		
+		$_AS['list2']['filename'] = array();
+		$_AS['list1']['filename'] = array();
+		$_AS['list2']['filemodified'] = array();
+		$_AS['list1']['filemodified'] = array();
+
+    $_AS['list']['changed_list'] = '';
+
+
+		if ($mvars['4000']=='true') {
+			$_AS['temp']['gen_rss']=false;
+			$_AS['temp']['db_changed_list'] =	as_get_val('as_rss-changed_mem-'.$_AS['file']);
+		}
+
+		
+	  for($iter = $_AS['collection']-&gt;get(); $iter-&gt;valid(); $iter-&gt;next() ) {
+
+	    //Aktuellen Eintrag als Objekt bereitstellen
+	    $_AS['item'] =&amp; $iter-&gt;current();
+	
+			$_AS['item_elements']=$_AS['elements']-&gt;loadById($_AS['item']-&gt;getDataByKey('idarticle'));
+
+	    //Tpl in Tmp-Var kopieren
+	    $_AS['temp']['list1_output'] = $mvars[6];
+			$_AS['temp']['list2_output'] = $mvars[7];
+
+
+			$_AS['temp']['data1']	=	as_element_replacement(	$_AS['item'],
+																											$_AS['artsys_obj'],
+																											$_AS['item_elements']['image'],
+																											$_AS['item_elements']['file'],
+																											$_AS['item_elements']['link'],
+																											'',
+																											$mvars[6],
+																											'',
+																											'',
+																											'',
+																											'',
+																											$_AS['temp']['categories'],
+																											$_AS['config'],
+																											false);
+			if (!empty($_AS['temp']['list2_output']))
+				$_AS['temp']['data2']	=	as_element_replacement(	$_AS['item'],
+																												$_AS['artsys_obj'],
+																												$_AS['item_elements']['image'],
+																												$_AS['item_elements']['file'],
+																												$_AS['item_elements']['link'],
+																												'',
+																												$mvars[7],
+																												'',
+																												'',
+																												'',
+																												'',
+																												$_AS['temp']['categories'],
+																												$_AS['config'],
+																												false);
+
+	    $_AS['list']['changed_list'] .= 'id'.$_AS['item']-&gt;getDataByKey('idarticle').'_'.$_AS['item']-&gt;getDataByKey('lastedit').' ';
+
+			if ($mvars['700']!='') {
+			
+				//
+				// create filename
+				//
+	
+				$_AS['temp']['filename'] = '';
+				$_AS['temp']['filemodified'] = '';
+
+				$_AS['temp']['filename']	=	$mvars[720];
+					
+				$_AS['temp']['filename'] =str_replace( array(
+																				'{category_id}',
+																				'{category_name}',
+																				'{lang_id}',
+																				'{lang_name}',
+																				'{idarticle}',
+																				'{title}'
+																				),
+																	array (
+																				str_replace(',','-',$_AS['temp']['category']),
+																				$_AS['cat_str_fn'],
+																				$lang,
+																				$_AS['temp']['langs'][$lang],
+																				$_AS['item']-&gt;getDataByKey('idarticle'),
+																				$_AS['item']-&gt;getDataByKey('title')
+																				),
+																	$_AS['temp']['filename']);
+	
+				foreach ($_AS['temp']['data'.str_replace('list','',$mvars['700'])] as $k =&gt; $v){
+						$_AS['temp']['filename']=str_replace('{'.$k.'}',$v,$_AS['temp']['filename']);
+				}
+				
+				//
+				// get modified time
+				//
+				if (is_file($cfg_client['path'].$_AS['temp']['filename']))
+					$_AS['temp']['filemodified']=@filemtime($cfg_client['path'].$_AS['temp']['filename']);
+			
+			
+				$_AS[$mvars['700']]['filename'][]=$_AS['temp']['filename'];
+				$_AS[$mvars['700']]['filemodified'][]=$_AS['temp']['filemodified'];
+			
+			}
+
+		
+			if (is_array($_AS['temp']['data1']) &amp;&amp; $mvars[9]!=2) {
+				foreach ($_AS['temp']['data1'] as $k =&gt; $v)
+					if (empty($mvars[9]))
+						$_AS['temp']['data1_conv'][$k]='&lt;![CDATA['.$v.']]&gt;';
+					else
+						$_AS['temp']['data1_conv'][$k]=asxml_safe_cr(htmlentities($v,ENT_COMPAT,'UTF-8'));
+				
+				$_AS['temp']['data1']=$_AS['temp']['data1_conv'];
+			}
+			if (is_array($_AS['temp']['data2']) &amp;&amp; $mvars[9]!=2){
+				foreach ($_AS['temp']['data2'] as $k =&gt; $v) 
+					if (empty($mvars[9]))
+						$_AS['temp']['data2_conv'][$k]='&lt;![CDATA['.$v.']]&gt;';
+					else
+						$_AS['temp']['data2_conv'][$k]=asxml_safe_cr(htmlentities($v,ENT_COMPAT,'UTF-8'));
+						
+				$_AS['temp']['data2']=$_AS['temp']['data2_conv'];	
+			}		
+			
+			unset($_AS['temp']['result_idcatsideback']);
+			
+			$_AS['temp']['first_routed_side']=array_slice(array_filter(explode('|',$_AS['item']-&gt;getDataByKey('idcategory'))),0,1);
+
+	   	$_AS['temp']['result_idcatside']=(int) str_replace('idcatside:','',array_search($_AS['temp']['first_routed_side'][0],$_AS['cat_routing']['routings']));	
+
+			if (empty($_AS['temp']['result_idcatside']) &amp;&amp; empty($mvars[71]))
+				$_AS['temp']['result_idcatside']=$idcatside;
+			elseif (!empty($_AS['temp']['result_idcatside']) &amp;&amp; !empty($mvars[71])) {
+				$_AS['temp']['result_idcatsideback']=$_AS['temp']['result_idcatside'];
+				$_AS['temp']['result_idcatside']=$mvars[71];
+			} elseif (!empty($mvars[71]))
+				$_AS['temp']['result_idcatside']=$mvars[71];
+				
+			$_AS['temp']['data1']['url'] = as_url_creator( $cfg_client['htmlpath']. asxml_createLinkUrl($lang,$_AS['temp']['result_idcatside'], 1),
+																						 array(	'idarticle' =&gt; $_AS['item']-&gt;getDataByKey('idarticle'),
+																						 				'idcatsideback' =&gt; $_AS['temp']['result_idcatsideback']),
+																						 				true 
+																									);
+			$_AS['temp']['data2']['url'] = $_AS['temp']['data1']['url'];
+
+			//fill template
+			foreach ($_AS['temp']['data1'] as $k =&gt; $v){
+
+					//fill template - element dependent if-statements
+					$_AS['temp']['list1_output']=str_replace('{'.$k.'}',$v,as_element_ifstatements($_AS['temp']['list1_output'],$_AS['temp']['data1'],$k,$v));
+
+					$_AS['temp']['list1_output']=str_replace('{'.$k.'}',$v,$_AS['temp']['list1_output']);
+
+			}
+			//fill template
+			foreach ($_AS['temp']['data2'] as $k =&gt; $v){
+
+					//fill template - element dependent if-statements
+					$_AS['temp']['list2_output']=str_replace('{'.$k.'}',$v,as_element_ifstatements($_AS['temp']['list2_output'],$_AS['temp']['data2'],$k,$v));
+
+					$_AS['temp']['list2_output']=str_replace('{'.$k.'}',$v,$_AS['temp']['list2_output']);
+
+			}
+	  	// global if-statements
+			$_AS['temp']['list2_output'] = as_element_sfifstatements($_AS['temp']['list2_output']);
+			$_AS['temp']['list1_output'] = as_element_sfifstatements($_AS['temp']['list1_output']);
+
+			$_AS['temp']['list1_output'] = str_replace('cms://',$cfg_client['htmlpath'].$cfg_client['contentfile'].'?',$_AS['temp']['list1_output']);
+			$_AS['temp']['list2_output'] = str_replace('cms://',$cfg_client['htmlpath'].$cfg_client['contentfile'].'?',$_AS['temp']['list2_output']);
+
+    	$_AS['temp']['list1_output'] = str_replace('{baseurl}',$cfg_client['htmlpath'],$_AS['temp']['list1_output']);
+			$_AS['temp']['list2_output'] = str_replace('{baseurl}',$cfg_client['htmlpath'],$_AS['temp']['list2_output']);
+
+			$_AS['temp']['prepurl4xml']=array();
+
+			if (strpos($_AS['temp']['list1_output'],'{prepurl4xml}')!==false) {
+				$_AS['temp']['prepurl4xml']=array();
+				preg_match_all('#\{prepurl4xml\}(.*)\{/prepurl4xml\}#sU',$_AS['temp']['list1_output'],$_AS['temp']['prepurl4xml']);
+				array_filter($_AS['temp']['prepurl4xml'][1]);
+				foreach($_AS['temp']['prepurl4xml'][1] as $v) {
+						$v_old=$v;
+						$v=htmlspecialchars_decode($v,ENT_COMPAT);
+						$v=htmlspecialchars($v,ENT_COMPAT,'UTF-8');
+						$_AS['temp']['list1_output'] = str_replace($v_old,$v,$_AS['temp']['list1_output']);
+					}
+				$_AS['temp']['list1_output']=str_replace(array('{prepurl4xml}','{/prepurl4xml}'), array('',''), $_AS['temp']['list1_output']);
+			}
+
+			if (strpos($_AS['temp']['list2_output'],'{prepurl4xml}')!==false) {
+				$_AS['temp']['prepurl4xml']=array();
+				preg_match_all('#\{prepurl4xml\}(.*)\{/prepurl4xml\}#sU',$_AS['temp']['list2_output'],$_AS['temp']['prepurl4xml']);
+				array_filter($_AS['temp']['prepurl4xml'][1]);
+				foreach($_AS['temp']['prepurl4xml'][1] as $v) {
+						$v_old=$v;
+						$v=htmlspecialchars_decode($v,ENT_COMPAT);
+						$v=htmlspecialchars($v,ENT_COMPAT,'UTF-8');
+						$_AS['temp']['list2_output'] = str_replace($v_old,$v,$_AS['temp']['list2_output']);
+					}
+				$_AS['temp']['list2_output']=str_replace(array('{prepurl4xml}','{/prepurl4xml}'), array('',''), $_AS['temp']['list2_output']);
+			}
+
+			if (strpos($_AS['temp']['list1_output'],'{preptxt4xml_special}')!==false) {
+				$_AS['temp']['preptxt4xml_special']=array();
+				preg_match_all('#\{preptxt4xml_special\}(.*)\{/preptxt4xml_special\}#sU',$_AS['temp']['list1_output'],$_AS['temp']['preptxt4xml_special']);
+				array_filter($_AS['temp']['preptxt4xml_special'][1]);
+				foreach($_AS['temp']['preptxt4xml_special'][1] as $v) {
+					$v_old=$v;
+					$v=html_entity_decode($v,ENT_COMPAT,'UTF-8');
+					$v=asxml_safe_cr(htmlentities($v,ENT_COMPAT,'UTF-8'));
+					$_AS['temp']['list1_output'] = str_replace($v_old,$v,$_AS['temp']['list1_output']);
+				}
+				$_AS['temp']['list1_output']=str_replace(array('{preptxt4xml_special}','{/preptxt4xml_special}'), array('',''), $_AS['temp']['list1_output']);
+			}
+
+			if (strpos($_AS['temp']['list2_output'],'{preptxt4xml_special}')!==false) {
+				$_AS['temp']['preptxt4xml_special']=array();
+				preg_match_all('#\{preptxt4xml_special\}(.*)\{/preptxt4xml_special\}#sU',$_AS['temp']['list2_output'],$_AS['temp']['preptxt4xml_special']);
+				array_filter($_AS['temp']['preptxt4xml_special'][1]);
+				foreach($_AS['temp']['preptxt4xml_special'][1] as $v) {
+					$v_old=$v;
+					$v=html_entity_decode($v,ENT_COMPAT,'UTF-8');
+					$v=asxml_safe_cr(htmlentities($v,ENT_COMPAT,'UTF-8'));
+					$_AS['temp']['list2_output'] = str_replace($v_old,$v,$_AS['temp']['list2_output']);
+				}
+				$_AS['temp']['list2_output']=str_replace(array('{preptxt4xml_special}','{/preptxt4xml_special}'), array('',''), $_AS['temp']['list2_output']);
+			}
+
+			if (strpos($_AS['temp']['list1_output'],'{preptxt4xml}')!==false) {
+				$_AS['temp']['preptxt4xml']=array();
+				preg_match_all('#\{preptxt4xml\}(.*)\{/preptxt4xml\}#sU',$_AS['temp']['list1_output'],$_AS['temp']['preptxt4xml']);
+				array_filter($_AS['temp']['preptxt4xml'][1]);
+				foreach($_AS['temp']['preptxt4xml'][1] as $v) {
+					$v_old=$v;
+					$v=htmlspecialchars(htmlspecialchars_decode($v),ENT_NOQUOTES,'UTF-8');
+					$_AS['temp']['list1_output'] = str_replace($v_old,$v,$_AS['temp']['list1_output']);
+				}
+				$_AS['temp']['list1_output']=str_replace(array('{preptxt4xml}','{/preptxt4xml}'), array('',''), $_AS['temp']['list1_output']);
+			}
+
+			if (strpos($_AS['temp']['list2_output'],'{preptxt4xml}')!==false) {
+				$_AS['temp']['preptxt4xml']=array();
+				preg_match_all('#\{preptxt4xml\}(.*)\{/preptxt4xml\}#sU',$_AS['temp']['list2_output'],$_AS['temp']['preptxt4xml']);
+				array_filter($_AS['temp']['preptxt4xml'][1]);
+				foreach($_AS['temp']['preptxt4xml'][1] as $v) {
+					$v_old=$v;
+					$v=htmlspecialchars(htmlspecialchars_decode($v),ENT_NOQUOTES,'UTF-8');
+					$_AS['temp']['list2_output'] = str_replace($v_old,$v,$_AS['temp']['list2_output']);
+				}
+				$_AS['temp']['list2_output']=str_replace(array('{preptxt4xml}','{/preptxt4xml}'), array('',''), $_AS['temp']['list2_output']);
+			}
+
+	    $_AS['list2']['row'][] = $_AS['temp']['list2_output'];
+	    $_AS['list1']['row'][] = $_AS['temp']['list1_output'];
+	  }
+
+
+
+
+		if(count($_AS['list1']['row']) == 1)
+		  $_AS['temp']['rows1'] = $_AS['list1']['row'][0];
+		elseif(count($_AS['list1']['row'])&gt;1)
+	    $_AS['temp']['rows1'] = implode(&quot;\n&quot;,$_AS['list1']['row']);
+	
+		if(count($_AS['list2']['row']) == 1)
+		  $_AS['temp']['rows2'] = $_AS['list2']['row'][0];
+		elseif(count($_AS['list2']['row'])&gt;1)
+	    $_AS['temp']['rows2'] = implode(&quot;\n&quot;,$_AS['list2']['row']);
+	
+		$_AS['output']['list_body']=$mvars[5];
+	
+		// 
+		// chop
+		// 
+		if (strpos($_AS['temp']['rows1'],'{chop}')!==false){
+			preg_match_all('#\{chop\}(.*)\{/chop\}#sU',$_AS['temp']['rows1'],$_AS['temp']['chopparts']);
+			if (!empty($_AS['temp']['chopparts']))
+		  	foreach ($_AS['temp']['chopparts'][1] as $k =&gt; $v)
+		  		$_AS['temp']['rows1']=str_replace(	$_AS['temp']['chopparts'][0][$k],
+		  																				asxml_str_chop($v, $mvars['1003'], $mvars['1004'], $mvars['1005']),
+		  																				$_AS['temp']['rows1']);
+		  else
+		  	$_AS['temp']['rows1']=str_replace(array('{chop}','{/chop}'), array('',''), $_AS['temp']['rows1']);
+		}
+	
+		if (strpos($_AS['temp']['rows2'],'{chop}')!==false){
+			preg_match_all('#\{chop\}(.*)\{/chop\}#sU',$_AS['temp']['rows2'],$_AS['temp']['chopparts']);
+			if (!empty($_AS['temp']['chopparts']))
+		  	foreach ($_AS['temp']['chopparts'][1] as $k =&gt; $v)
+		  		$_AS['temp']['rows2']=str_replace(	$_AS['temp']['chopparts'][0][$k],
+		  																				asxml_str_chop($v, $mvars['1003'], $mvars['1004'], $mvars['1005']),
+		  																				$_AS['temp']['rows2']);
+		  else
+		  	$_AS['temp']['rows2']=str_replace(array('{chop}','{/chop}'), array('',''), $_AS['temp']['rows2']);
+		}
+	
+
+		if ( $mvars['4000']=='true' &amp;&amp; $_AS['list']['changed_list'] != $_AS['temp']['db_changed_list'] || !is_file($cfg_client['path'].$_AS['file']) ) {
+			as_set_val ('as_rss-changed_mem-'.$_AS['file'],$_AS['list']['changed_list']);
+			$_AS['temp']['gen_rss']=true;	
+		}
+	
+		if ( $mvars['4000']!='true' || ( $mvars['4000']=='true' &amp;&amp; $_AS['temp']['gen_rss']==true ) ) {
+
+		if (strpos($_AS['output']['list_body'],'{content1}')!==false || strpos($_AS['output']['list_body'],'{content2}')!==false){
+
+			$_AS['output']['list_body'] = str_replace( '{content1}',$_AS['temp']['rows1'],$_AS['output']['list_body']);
+		  $_AS['output']['list_body'] = str_replace( '{content2}',$_AS['temp']['rows2'],$_AS['output']['list_body']);
+			
+			$_AS['output']['list_body']=str_replace( array(
+																			'{date}',
+																			'{time}',
+																			'{site_url}',
+																			'{category}'
+																			),
+																array (
+																			date($_AS['config']['date'],mktime()),
+																			strftime($_AS['config']['time'],mktime()),
+																			$cfg_client['htmlpath'],
+																			$_AS['cat_str']
+																			),
+																$_AS['output']['list_body']);
+		
+			$_AS['handle'] = @fopen ($cfg_client['path'].$_AS['file'], 'w+');
+			@fwrite ($_AS['handle'],'&lt;'.'?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?'.'&gt;'.asxml_snippetReplace($_AS['output']['list_body']));
+			@fclose ($_AS['handle']); 
+		
+		}
+
+		if ($mvars['700']!='') {
+			foreach ($_AS[$mvars['700']]['row'] as $k =&gt; $v) {
+				if($_AS[$mvars['700']]['filemodified'][$k]+($mvars[480]*60)&lt;mktime() || !empty($mvars[4]) ) {
+					if (strpos($_AS[$mvars['700']]['row'][$k],'{chop}')!==false){
+						preg_match_all('#\{chop\}(.*)\{/chop\}#sU',$_AS[$mvars['700']]['row'][$k],$_AS['temp']['chopparts']);
+						if (!empty($_AS['temp']['chopparts']))
+					  	foreach ($_AS['temp']['chopparts'][1] as $k =&gt; $v)
+					  		$_AS[$mvars['700']]['row'][$k]=str_replace(	$_AS['temp']['chopparts'][0][$k],
+					  																				asxml_str_chop($v, $mvars['1003'], $mvars['1004'], $mvars['1005']),
+					  																				$_AS[$mvars['700']]['row'][$k]);
+					  else
+					  	$_AS[$mvars['700']]['row'][$k]=str_replace(array('{chop}','{/chop}'), array('',''), $_AS[$mvars['700']]['row'][$k]);
+					}
+					$_AS['handle'] = @fopen ($cfg_client['path'].$_AS[$mvars['700']]['filename'][$k], 'w+');
+					@fwrite ($_AS['handle'],'&lt;'.'?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?'.'&gt;'.&quot;\n&quot;.asxml_snippetReplace($_AS[$mvars['700']]['row'][$k]));
+					@fclose ($_AS['handle']); 
+				}
+			}
+		}
+	 }
+	}
+
+$_AS['link']=str_replace( array(
+																'{rss_file}'
+																),
+													array (
+																$cfg_client['htmlpath'].$_AS['file'],
+																
+																),
+													$mvars[920]);
+
+echo stripslashes(asxml_snippetReplace($_AS['link']));
+
+unset($adodb,$rs, $_AS, $mvars, $mod);
+
+
+}
+&lt;/CMSPHP&gt;
+</output>
+   <config>1=0&amp;3=0&amp;4=1&amp;5=%3Crss+version%3D%5C%222.0%5C%22%3E%0D%0A%09%3Cchannel%3E%0D%0A%09%3Ctitle%3ERSS-Feed+-+%7Bcategory%7D%3C%2Ftitle%3E%0D%0A%09%3Clink%3E%7Bsite_url%7D%3C%2Flink%3E%0D%0A%09%3Cdescription%3EBeschreibung+des+Feeds%3C%2Fdescription%3E%0D%0A%09%3Clanguage%3Ede-de%3C%2Flanguage%3E%0D%0A%09%3Ccopyright%3Eurheberrechtliche+Informationen%3C%2Fcopyright%3E%0D%0A%09%3CpubDate%3E%7Bdate%7D%3C%2FpubDate%3E%0D%0A%09%7Bcontent1%7D%0D%0A%09%3C%2Fchannel%3E%0D%0A%3C%2Frss%3E%0D%0A&amp;6=%3Citem%3E%0D%0A%09%3Ctitle%3E%7Btitle%7D%3C%2Ftitle%3E%0D%0A%09%3Cdescription%3E%7Bchop%7D%7Btext%7D%7B%2Fchop%7D%3C%2Fdescription%3E%0D%0A%09%3Clink%3E%7Burl%7D%3C%2Flink%3E%0D%0A%09%3Cauthor%3E%7Bcustom%3A1%7D%3C%2Fauthor%3E%0D%0A%09%3Cguid%3E%7Burl%7D%3C%2Fguid%3E%0D%0A%3C%2Fitem%3E%0D%0A&amp;8=0&amp;9=0&amp;10=%7Bday%7D.%7Bmonth%7D.%7Byear%7D&amp;11=%7Bhour%7D%3A%7Bminute%7D+Uhr&amp;48=0&amp;71=0&amp;302=0&amp;400=startdate+%3E+DESC%0D%0Astarttime+%3E+DESC+%0D%0Aenddate+%3E+DESC%0D%0Aendtime+%3EDESC%0D%0Acreated+%3E+DESC%0D%0Atitle+%3E+ASC&amp;480=15&amp;720=article_%7Btitle%7D.xml&amp;900=feed_%7Bcategory_id%7D.xml&amp;920=%3Clink+rel%3D%5C%22alternate%5C%22+type%3D%5C%22application%2Frss%2Bxml%5C%22+title%3D%5C%22RSS+Feed%5C%22+href%3D%5C%22%7Brss_file%7D%5C%22+%2F%3E&amp;1003=200&amp;1005=+...+&amp;4000=false&amp;10010=d&amp;10011=m&amp;10012=Y&amp;10110=d&amp;10111=m&amp;10112=Y&amp;11100=LC_TIME%2Cde_DE%40euro%2Cde_DE%2Cde%2Cge&amp;11110=%25A&amp;11111=%25B&amp;1000000=articlesystem</config>
+   <repository_id>mod:85808e5c7b2a326d228e1238c28640a5:012a17d6</repository_id>
+   <install_sql></install_sql>
+   <uninstall_sql></uninstall_sql>
+   <update_sql></update_sql>
+</modul>
