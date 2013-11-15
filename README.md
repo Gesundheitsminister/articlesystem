@@ -31,7 +31,7 @@ Features
 
 Autor(en)
 ---------------------------------------------------------------------------
-* Alexander M. Korn (amk) (v0.1.0-v1.6.10)
+* Alexander M. Korn (amk) (v0.1.0-v?.?.?)
 * Holger Stitz (Terminkalender v1.2.5 - als Basis)
 
 Benötigte Sefrengo Version
