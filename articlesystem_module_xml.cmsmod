@@ -2,7 +2,7 @@
 <modul version='0.4' date='1306235189'>
    <name>Artikelsystem XML</name>
    <cat>Tools</cat>
-   <version>1.7.1</version>
+   <version>1.7.2</version>
    <author>1</author>
    <created>1306227241</created>
    <lastmodified>1306235074</lastmodified>
@@ -867,7 +867,7 @@ if (!function_exists('asxml_snippetReplace')) {
 			if (file_exists($GLOBALS['cfg_cms']['cms_path']. 'plugins/snippet_replacement/inc/class.SnippetReplacement.php'))
 			{
 				include_once $GLOBALS['cfg_cms']['cms_path']. 'plugins/snippet_replacement/inc/class.SnippetReplacement.php';
-				$_AS['snippet_object']  =&amp; new snippetReplacement();
+				$_AS['snippet_object']  = new snippetReplacement();
 				$_AS['snippet_replacement_found'] = true;
 			}
 			else
